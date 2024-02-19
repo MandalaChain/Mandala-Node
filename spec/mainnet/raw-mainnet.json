@@ -1,10 +1,10 @@
 {
-  "name": "Mandala Chain",
-  "id": "mandala_chain",
+  "name": "Mandala",
+  "id": "mandala",
   "chainType": "Live",
   "bootNodes": [],
   "telemetryEndpoints": null,
-  "protocolId": "mandala_chain",
+  "protocolId": "mandala/relay/live/sync",
   "properties": {
     "ss58Format": 6629,
     "tokenDecimals": 18,
