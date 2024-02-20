@@ -25,23 +25,23 @@
       "balances": {
         "balances": [
           [
-            "vSm9rLH4t37ZiSJKL7VJuYAwUfskC8tLbMUERX3ZmFTFmyAtA",
+            "5Dfgb2drjnq8V4zoQxeWusXxJ22FW3tuBvYwPextgSFo4C9Q",
             190000000000000000000000000
           ],
           [
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            "5FcBjyvkp5kCYkHZhMhhnuPVBfjDvh6oK8qHTpLqtgndnd9H",
             110000000000000000000000000
           ],
           [
-            "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+            "5HNJEerJ39AorpSJP4x7HJdWu6bwjiwdwnMCkCWuGHngi8XR",
             250000000000000000000000000
           ],
           [
-            "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+            "5GUAyY1NveDEge3X2hisR4ALruQE6BepjnUqTWx1tPFkPsDU",
             250000000000000000000000000
           ],
           [
-            "5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw",
+            "5DNrnmbAmqw5PqPpWssmgJnTdkzCr9YoF7FFFTGCQtHxekPu",
             200000000000000000000000000
           ]
         ]
@@ -50,30 +50,30 @@
         "multiplier": "1000000000000000000"
       },
       "sudo": {
-        "key": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+        "key": "5DwMrdczi1edpQFDs3LJqhKtaSG4YdEUAX2JvQNRatkhYxLG"
       },
       "collatorSelection": {
         "invulnerables": [
-          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+          "5CPCLpDYowC7Y4wq5HqXW3jfhRvctxAVL5uD5tHYqbSaPz41",
+          "5D21F4oKxXgjMDG916KSmdD3y7DwRDw4Ya4FZWufe7d2jJTc"
         ],
-        "candidacyBond": 16000000000,
-        "desiredCandidates": 0
+        "candidacyBond": 1000000000000000000000,
+        "desiredCandidates": 10
       },
       "session": {
         "keys": [
           [
-            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "5CPCLpDYowC7Y4wq5HqXW3jfhRvctxAVL5uD5tHYqbSaPz41",
+            "5CPCLpDYowC7Y4wq5HqXW3jfhRvctxAVL5uD5tHYqbSaPz41",
             {
-              "aura": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+              "aura": "5CPCLpDYowC7Y4wq5HqXW3jfhRvctxAVL5uD5tHYqbSaPz41"
             }
           ],
           [
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            "5D21F4oKxXgjMDG916KSmdD3y7DwRDw4Ya4FZWufe7d2jJTc",
+            "5D21F4oKxXgjMDG916KSmdD3y7DwRDw4Ya4FZWufe7d2jJTc",
             {
-              "aura": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+              "aura": "5D21F4oKxXgjMDG916KSmdD3y7DwRDw4Ya4FZWufe7d2jJTc"
             }
           ]
         ]
