@@ -6,7 +6,7 @@
   "telemetryEndpoints": null,
   "protocolId": "mandala/relay/local/sync",
   "properties": {
-    "ss58Format": 6629,
+    "ss58Format": 42,
     "tokenDecimals": 18,
     "tokenSymbol": "KPG"
   },
