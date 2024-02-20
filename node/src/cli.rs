@@ -29,11 +29,16 @@ pub enum Subcommand {
 
 	/// Export the genesis wasm of the parachain.
 	ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),
+	
+	/// Key relted utilities.
+	#[command(subcommand)]
+	Key(sc_cli::KeySubcommand),
 
 	/// Sub-commands concerned with benchmarking.
 	/// The pallet benchmarking moved to the `pallet` sub-command.
 	#[command(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
+
 
 	/// Try some testing command against a specified runtime state.
 	#[cfg(feature = "try-runtime")]
