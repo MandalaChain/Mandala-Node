@@ -1,5 +1,5 @@
 [package]
-name = "Mandala"
+name = "mandala"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
@@ -13,7 +13,7 @@ jsonrpsee = { version = "0.16.2", features = ["server"] }
 futures = "0.3.28"
 
 # Local
-parachain-template-runtime = { path = "../runtime" }
+mandala-runtime = { path = "../runtime" }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0" }
@@ -69,10 +69,10 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/substrate"
 [features]
 default = []
 runtime-benchmarks = [
-	"parachain-template-runtime/runtime-benchmarks",
+	"mandala-runtime/runtime-benchmarks",
 	"polkadot-cli/runtime-benchmarks",
 ]
 try-runtime = [
 	"try-runtime-cli/try-runtime",
-	"parachain-template-runtime/try-runtime"
+	"mandala-runtime/try-runtime"
 ]
