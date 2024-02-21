@@ -1,0 +1,104 @@
+name: Node Build Check
+
+on:
+  push:
+    branches:
+      - main
+      - build/build-check
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rustfmt:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt
+
+      - uses: actions/checkout@v3
+
+      - name: Cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: stable
+          command: fmt
+          args: --all --manifest-path ./Cargo.toml -- --check
+
+  clippy:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown 
+          components: clippy
+
+      - uses: actions/checkout@v3
+      
+      - name: Install protoc
+        uses: taiki-e/install-action@v1
+        with:
+          tool: protoc
+
+      - name: Cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: stable
+          command: clippy
+          args: --locked --manifest-path ./Cargo.toml -- -D warnings
+  
+          
+  build:
+   runs-on: 'ubuntu-latest'
+   steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown 
+          
+      - uses: actions/checkout@v3
+      
+      - name: Install protoc
+        uses: taiki-e/install-action@v1
+        with:
+          tool: protoc
+      
+      - name: Cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: stable
+          command: build
+          args: --release --locked --manifest-path ./Cargo.toml
+          
+  test:
+   runs-on: 'ubuntu-latest'
+   steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown 
+          
+      - uses: actions/checkout@v3
+      
+      - name: Install protoc and nextest
+        uses: taiki-e/install-action@v1
+        with:
+          tool: nextest,protoc
+      
+      - name: Cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: stable
+          command: nextest
+          args: run  --locked --manifest-path ./Cargo.toml
+          
+   
