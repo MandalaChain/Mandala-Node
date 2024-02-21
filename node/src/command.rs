@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{ BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE };
 use log::{ info, warn };
-use mandala_runtime::Block;
+use mandala_runtime::{ Block, SS58Prefix };
 use sc_cli::{
     ChainSpec,
     CliConfiguration,
@@ -16,6 +16,7 @@ use sc_cli::{
     SubstrateCli,
 };
 use sc_service::config::{ BasePath, PrometheusConfig };
+use sp_core::crypto::Ss58AddressFormat;
 use sp_runtime::traits::AccountIdConversion;
 
 use crate::{ chain_spec, cli::{ Cli, RelayChainCli, Subcommand }, service::new_partial };
@@ -119,8 +120,15 @@ macro_rules! construct_async_run {
     };
 }
 
+fn set_default_prefix() {
+    sp_core::crypto::set_default_ss58_version(Ss58AddressFormat::custom(SS58Prefix::get()))
+}
+
 /// Parse command line arguments into service configuration.
 pub fn run() -> Result<()> {
+    // set default ss58 prefix to 6629 for mandala
+    set_default_prefix();
+
     let cli = Cli::from_args();
 
     match &cli.subcommand {
@@ -153,10 +161,7 @@ pub fn run() -> Result<()> {
                 Ok(cmd.run(components.client, components.backend, None))
             })
         }
-        Some(Subcommand::Key(cmd)) => {
-            Ok(cmd.run(&cli)?)
-            
-		}
+        Some(Subcommand::Key(cmd)) => { Ok(cmd.run(&cli)?) }
         Some(Subcommand::PurgeChain(cmd)) => {
             let runner = cli.create_runner(cmd)?;
 
