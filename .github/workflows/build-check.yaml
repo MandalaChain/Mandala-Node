@@ -18,7 +18,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           components: rustfmt
 
       - uses: actions/checkout@v3
@@ -26,7 +26,7 @@ jobs:
       - name: Cargo fmt
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           command: fmt
           args: --all --manifest-path ./Cargo.toml -- --check
 
@@ -36,7 +36,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown 
           components: clippy
 
@@ -50,7 +50,7 @@ jobs:
       - name: Cargo clippy
         uses: actions-rs/cargo@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           command: clippy
           args: --locked --manifest-path ./Cargo.toml -- -D warnings
   
@@ -61,7 +61,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown 
           
       - uses: actions/checkout@v3
@@ -84,7 +84,7 @@ jobs:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown 
           
       - uses: actions/checkout@v3
