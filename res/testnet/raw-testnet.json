@@ -6,7 +6,7 @@
   "telemetryEndpoints": null,
   "protocolId": "niskala/relay/testnet/sync",
   "properties": {
-    "ss58Format": 42,
+    "ss58Format": 6629,
     "tokenDecimals": 18,
     "tokenSymbol": "KPGT"
   },
@@ -64,7 +64,6 @@
         "0xd57bce545fb382c34570e5dfbf338f5e4e7b9012096b41c4eb3aaf947f6ea429": "0x0000",
         "0xe38f185207498abb5c213d0fb059b3d84e7b9012096b41c4eb3aaf947f6ea429": "0x0100",
         "0xe38f185207498abb5c213d0fb059b3d86323ae84c43568be0d1394d5d0d522c4": "0x03000000",
-        "0xef8cadb5008997742232597d11bbb6fe4e7b9012096b41c4eb3aaf947f6ea429": "0x0000",
         "0xf0c365c3cf59d671eb72da0e7a4113c44e7b9012096b41c4eb3aaf947f6ea429": "0x0000"
       },
       "childrenDefault": {}
