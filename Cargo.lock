@@ -5097,7 +5097,6 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-collator-selection",
- "pallet-parachain-template",
  "pallet-session",
  "pallet-sudo",
  "pallet-timestamp",
@@ -6358,21 +6357,6 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-parachain-template"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
