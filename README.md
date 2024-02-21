@@ -97,3 +97,7 @@ cargo build --release
 [] Testing auction on Rococo
 
 [] Testing crowdloan on Rococo
+
+
+## Notes
+Probably setup a workflow job to automatically update state if any chain spec is changed
