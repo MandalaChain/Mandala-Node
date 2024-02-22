@@ -30,6 +30,7 @@ use sp_version::RuntimeVersion;
 
 use frame_support::{
     construct_runtime,
+    derive_impl,
     dispatch::DispatchClass,
     parameter_types,
     traits::{ ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, Everything },
@@ -228,6 +229,17 @@ const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
     cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64
 );
 
+
+/// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
+/// into the relay chain.
+const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
+/// How many parachain blocks are processed by the relay chain per parent. Limits the
+/// number of blocks authored per slot.
+const BLOCK_PROCESSING_VELOCITY: u32 = 1;
+/// Relay chain slot duration, in milliseconds.
+const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
+
+
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -266,6 +278,7 @@ parameter_types! {
 
 // Configure FRAME pallets to include in runtime.
 
+#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
     /// The identifier used to distinguish between accounts.
     type AccountId = AccountId;
@@ -344,8 +357,8 @@ impl pallet_balances::Config for Runtime {
     type MaxReserves = ConstU32<50>;
     type ReserveIdentifier = [u8; 8];
     type RuntimeHoldReason = RuntimeHoldReason;
+    type RuntimeFreezeReason = RuntimeFreezeReason;
     type FreezeIdentifier = ();
-    type MaxHolds = ConstU32<0>;
     type MaxFreezes = ConstU32<0>;
 }
 
@@ -370,20 +383,29 @@ impl pallet_sudo::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-    pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
 
+
 impl cumulus_pallet_parachain_system::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type OnSystemEvent = ();
-    type SelfParaId = parachain_info::Pallet<Runtime>;
-    type OutboundXcmpMessageSource = XcmpQueue;
-    type DmpMessageHandler = DmpQueue;
-    type ReservedDmpWeight = ReservedDmpWeight;
-    type XcmpMessageHandler = XcmpQueue;
-    type ReservedXcmpWeight = ReservedXcmpWeight;
-    type CheckAssociatedRelayNumber = RelayNumberStrictlyIncreases;
+	type WeightInfo = ();
+	type RuntimeEvent = RuntimeEvent;
+	type OnSystemEvent = ();
+	type SelfParaId = parachain_info::Pallet<Runtime>;
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
+	type ReservedDmpWeight = ReservedDmpWeight;
+	type XcmpMessageHandler = XcmpQueue;
+	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = RelayNumberStrictlyIncreases;
+	type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+		Runtime,
+		RELAY_CHAIN_SLOT_DURATION_MILLIS,
+		BLOCK_PROCESSING_VELOCITY,
+		UNINCLUDED_SEGMENT_CAPACITY,
+	>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -391,22 +413,18 @@ impl parachain_info::Config for Runtime {}
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type XcmExecutor = XcmExecutor<XcmConfig>;
-    type ChannelInfo = ParachainSystem;
-    type VersionWrapper = ();
-    type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-    type ControllerOrigin = EnsureRoot<AccountId>;
-    type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-    type WeightInfo = ();
-    type PriceForSiblingDelivery = ();
+	type RuntimeEvent = RuntimeEvent;
+	type ChannelInfo = ParachainSystem;
+	type VersionWrapper = ();
+	// Enqueue XCMP messages from siblings for later processing.
+	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
+	type MaxInboundSuspended = sp_core::ConstU32<1_000>;
+	type ControllerOrigin = EnsureRoot<AccountId>;
+	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type WeightInfo = ();
+	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
 }
 
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type XcmExecutor = XcmExecutor<XcmConfig>;
-    type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
-}
 
 parameter_types! {
     pub const Period: u32 = 6 * HOURS;
@@ -470,12 +488,11 @@ impl pallet_utility::Config for Runtime {
     type PalletsOrigin = OriginCaller;
 }
 
-
 pub const STORAGE_BYTE_FEE: Balance = 20 * MICROUNIT;
 
 /// Charge fee for stored bytes and items.
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
-    items as Balance * 100 * MILLIUNIT + (bytes as Balance) * STORAGE_BYTE_FEE
+    (items as Balance) * 100 * MILLIUNIT + (bytes as Balance) * STORAGE_BYTE_FEE
 }
 
 parameter_types! {
@@ -494,6 +511,29 @@ impl pallet_multisig::Config for Runtime {
     type MaxSignatories = ConstU32<100>;
     type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
 }
+
+impl pallet_message_queue::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type MessageProcessor = pallet_message_queue::mock_helpers::NoopMessageProcessor<
+		cumulus_primitives_core::AggregateMessageOrigin,
+	>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type MessageProcessor = xcm_builder::ProcessXcmMessage<
+		AggregateMessageOrigin,
+		xcm_executor::XcmExecutor<xcm_config::XcmConfig>,
+		RuntimeCall,
+	>;
+	type Size = u32;
+	// The XCMP queue pallet is only ever able to handle the `Sibling(ParaId)` origin:
+	type QueueChangeHandler = NarrowOriginToSibling<XcmpQueue>;
+	type QueuePausedQuery = NarrowOriginToSibling<XcmpQueue>;
+	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
+	type MaxStale = sp_core::ConstU32<8>;
+	type ServiceWeight = MessageQueueServiceWeight;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime
@@ -522,7 +562,8 @@ construct_runtime!(
 		XcmpQueue: cumulus_pallet_xcmp_queue = 30,
 		PolkadotXcm: pallet_xcm = 31,
 		CumulusXcm: cumulus_pallet_xcm = 32,
-		DmpQueue: cumulus_pallet_dmp_queue = 33,
+		MessageQueue: pallet_message_queue = 33,
+
 
 		// helper
 		Multisig: pallet_multisig = 40,
@@ -755,33 +796,19 @@ impl_runtime_apis! {
 			Ok(batches)
 		}
 	}
+
+	impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+		fn create_default_config() -> Vec<u8> {
+			create_default_config::<RuntimeGenesisConfig>()
+		}
+
+		fn build_config(config: Vec<u8>) -> sp_genesis_builder::Result {
+			build_config::<RuntimeGenesisConfig>(config)
+		}
+	}
 }
 
-struct CheckInherents;
-
-impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
-    fn check_inherents(
-        block: &Block,
-        relay_state_proof: &cumulus_pallet_parachain_system::RelayChainStateProof
-    ) -> sp_inherents::CheckInherentsResult {
-        let relay_chain_slot = relay_state_proof
-            .read_slot()
-            .expect("Could not read the relay chain slot from the proof");
-
-        let inherent_data = cumulus_primitives_timestamp::InherentDataProvider
-            ::from_relay_chain_slot_and_duration(
-                relay_chain_slot,
-                sp_std::time::Duration::from_secs(6)
-            )
-            .create_inherent_data()
-            .expect("Could not create the timestamp inherent data");
-
-        inherent_data.check_extrinsics(block)
-    }
+cumulus_pallet_parachain_system::register_validate_block! {
+	Runtime = Runtime,
+	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
-
-cumulus_pallet_parachain_system::register_validate_block!(
-    Runtime = Runtime,
-    BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
-    CheckInherents = CheckInherents
-);
