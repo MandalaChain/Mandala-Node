@@ -64,31 +64,31 @@ cargo build --release
 
 ## Steps
 
-[] Prepare multisig for initial supply
+[ x ] Prepare multisig for initial supply
 
-[] Secure sudo root key
+[ x ] Secure sudo root key
 
-[] mainnet.json
+[ x ] mainnet.json
 
-[] Check and verify initial supply
+[ x ] Check and verify initial supply (1B KPGT)
 
-[] Check and verify SS58 prefix
+[ x ] Check and verify SS58 prefix
 
-[] Check and verify protocol ID
+[ x ] Check and verify protocol ID
 
-[] Check and verify chain ID
+[ x ] Check and verify chain ID
 
-[] Check and verify chain name
+[ x ] Check and verify chain name
 
-[] Check and verify token decimals
+[ x ] Check and verify token decimals
 
-[] Check and verify token symbol
+[ x ] Check and verify token symbol
 
 [] Prepare runtime config of Mandala and verify everything is correct, triple check
 
 [] Prepare and document extrinsics to be sent
 
-[] Local test on dev machine
+[ x ] Local test on dev machine (zian)
 
 [] Local test on another dev machine
 
