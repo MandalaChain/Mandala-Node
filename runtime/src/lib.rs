@@ -207,9 +207,9 @@ pub const HOURS: BlockNumber = MINUTES * 60;
 pub const DAYS: BlockNumber = HOURS * 24;
 
 // Unit = the base number of indivisible units for balances
-pub const UNIT: Balance = 1_000_000_000_000;
-pub const MILLIUNIT: Balance = 1_000_000_000;
-pub const MICROUNIT: Balance = 1_000_000;
+pub const UNIT: Balance = 1_000_000_000_000_000_000;
+pub const MILLIUNIT: Balance = 1_000_000_000_000_000;
+pub const MICROUNIT: Balance = 1_000_000_000_000;
 
 /// The existential deposit. Set to 1/10 of the Connected Relay Chain.
 pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
@@ -470,6 +470,30 @@ impl pallet_utility::Config for Runtime {
     type PalletsOrigin = OriginCaller;
 }
 
+
+pub const STORAGE_BYTE_FEE: Balance = 20 * MICROUNIT;
+
+/// Charge fee for stored bytes and items.
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+    items as Balance * 100 * MILLIUNIT + (bytes as Balance) * STORAGE_BYTE_FEE
+}
+
+parameter_types! {
+    // One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
+    pub const DepositBase: Balance = deposit(1, 88);
+    // Additional storage item size of 32 bytes.
+    pub const DepositFactor: Balance = deposit(0, 32);
+}
+
+impl pallet_multisig::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeCall = RuntimeCall;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = ConstU32<100>;
+    type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+}
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime
@@ -501,7 +525,8 @@ construct_runtime!(
 		DmpQueue: cumulus_pallet_dmp_queue = 33,
 
 		// helper
-		Utility: pallet_utility = 40,
+		Multisig: pallet_multisig = 40,
+		Utility: pallet_utility = 41,
 	}
 );
 

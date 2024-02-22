@@ -49,6 +49,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v1.0.0" }
 sp-version = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v1.0.0" }
 pallet-utility = { workspace = true }
+pallet-multisig = { workspace = true }
 # Polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v1.0.0" }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v1.0.0" }

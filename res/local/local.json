@@ -27,6 +27,10 @@
           [
             "5Ftiw8Y5s6XdS4mcxaMVapMX7MJyDtW5PoYxZyQmBVyb79gZ",
             1000000000000000000000000000
+          ],
+          [
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            1000000000000000000000000000
           ]
         ]
       },
@@ -34,7 +38,7 @@
         "multiplier": "1000000000000000000"
       },
       "sudo": {
-        "key": "5DwMrdczi1edpQFDs3LJqhKtaSG4YdEUAX2JvQNRatkhYxLG"
+        "key": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
       },
       "collatorSelection": {
         "invulnerables": [
