@@ -7,7 +7,7 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
-substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", optional = true, default-features = false }
+substrate-wasm-builder = { workspace = true, optional = true }
 
 [dependencies]
 codec = { workspace = true, default-features = false, features = ["derive"] }
@@ -33,13 +33,14 @@ pallet-sudo = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
 pallet-transaction-payment = { workspace = true, default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = false }
-sp-api = { workspace = true, default-features = false }
-sp-block-builder = { workspace = true, default-features = false }
-sp-consensus-aura = { workspace = true, default-features = false }
-sp-core = { workspace = true, default-features = false }
+sp-api = { workspace = true, default-features = false}
+sp-block-builder = { workspace = true , default-features = false}
+
+sp-consensus-aura = { workspace = true, default-features = false}
+sp-core = { workspace = true,default-features = false }
 sp-inherents = { workspace = true, default-features = false }
 sp-offchain = { workspace = true, default-features = false }
-sp-runtime = { workspace = true, default-features = false }
+sp-runtime = { workspace = true , default-features = false}
 sp-session = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 sp-transaction-pool = { workspace = true, default-features = false }
@@ -53,6 +54,7 @@ polkadot-runtime-common = { workspace = true, default-features = false }
 xcm = { workspace = true, default-features = false }
 xcm-builder = { workspace = true, default-features = false }
 xcm-executor = { workspace = true, default-features = false }
+parachains-common = {workspace = true, default-features = false}
 
 # Cumulus
 cumulus-pallet-aura-ext = { workspace = true, default-features = false }
@@ -60,7 +62,7 @@ cumulus-pallet-parachain-system = { workspace = true, default-features = false }
 cumulus-pallet-session-benchmarking = { workspace = true, default-features = false }
 cumulus-pallet-xcm = { workspace = true, default-features = false }
 cumulus-pallet-xcmp-queue = { workspace = true, default-features = false }
-cumulus-primitives-core = { workspace = true, default-features = false }
+cumulus-primitives-core = { workspace = true ,default-features = false}
 cumulus-primitives-timestamp = { workspace = true, default-features = false }
 cumulus-primitives-utility = { workspace = true, default-features = false }
 pallet-collator-selection = { workspace = true, default-features = false }
@@ -112,6 +114,9 @@ std = [
 	"xcm/std",
 	"substrate-wasm-builder",
 	"pallet-message-queue/std",
+	"pallet-utility/std",
+	"pallet-multisig/std",
+	"parachains-common/std",
 ]
 
 runtime-benchmarks = [
