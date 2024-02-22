@@ -144,3 +144,6 @@ Temporary Items
 .vscode
 
 **/node_modules
+
+zombienet/binaries/*
+!zombienet/binaries/.gitkeep

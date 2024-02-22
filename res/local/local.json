@@ -6,9 +6,9 @@
   "telemetryEndpoints": null,
   "protocolId": "mandala/relay/local/sync",
   "properties": {
-    "ss58Format": 42,
+    "ss58Format": 6679,
     "tokenDecimals": 18,
-    "tokenSymbol": "KPG"
+    "tokenSymbol": "KPGL"
   },
   "relay_chain": "rococo-local",
   "para_id": 2000,
