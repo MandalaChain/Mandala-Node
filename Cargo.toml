@@ -1,6 +1,9 @@
 [profile.release]
 panic = "unwind"
 
+[workspace.dependencies]
+pallet-utility = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v1.0.0", default-features = false }
+
 [workspace]
 members = [
 	"node",
