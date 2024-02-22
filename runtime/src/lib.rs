@@ -47,6 +47,8 @@ use frame_support::{
     },
     PalletId,
 };
+use frame_support::traits::Everything;
+use sp_runtime::traits::AccountIdLookup;
 use frame_system::{ limits::{ BlockLength, BlockWeights }, EnsureRoot };
 use pallet_xcm::{ EnsureXcm, IsVoiceOfBody };
 use parachains_common::message_queue::{ NarrowOriginToSibling, ParaIdToSibling };
@@ -165,7 +167,7 @@ impl WeightToFeePolynomial for WeightToFee {
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
 /// to even the core data structures.
 pub mod opaque {
-    use super::*;
+    pub use super::*;
     use sp_runtime::{ generic, traits::BlakeTwo256 };
 
     pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
@@ -280,7 +282,6 @@ parameter_types! {
 }
 
 // Configure FRAME pallets to include in runtime.
-
 #[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
     /// The identifier used to distinguish between accounts.
