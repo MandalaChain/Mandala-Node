@@ -16,10 +16,12 @@ validator = true
 [[parachains]]
 id = 2000
 chain = "{{CHAIN}}"
+genesis_wasm_path = "{{PARACHAIN_WASM}}"
+cumulus_based = true
 
-[[parachains.collator_groups]]
-count = 2
+
+[parachains.collator]
+name = "mandala-collator-1"
 command = "mandala"
 
-[parachains.collator_groups.collator]
-name = "mandala-collator"
+
