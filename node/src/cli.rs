@@ -24,6 +24,10 @@ pub enum Subcommand {
 	/// Remove the whole chain.
 	PurgeChain(cumulus_client_cli::PurgeChainCmd),
 
+	/// keystore related utilities
+	#[command(subcommand)]
+	Key(sc_cli::KeySubcommand),
+
 	/// Export the genesis head data of the parachain.
 	///
 	/// Head data is the encoded block header.
