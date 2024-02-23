@@ -33,7 +33,7 @@
           ]
         },
         "parachainInfo": {
-          "parachainId": 4380
+          "parachainId": 3365
         },
         "polkadotXcm": {
           "safeXcmVersion": 4
