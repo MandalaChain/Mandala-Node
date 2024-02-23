@@ -28,8 +28,8 @@
         "collatorSelection": {
           "candidacyBond": 16000000000000000,
           "invulnerables": [
-            "5ELMqbqXZCHGWAdmtKs13SjaABGUbX1vSEuksP6tTSwJCyWh",
-            "5DMLtYFPK68E5PYxDuPRNBXZwiX2ZxcCC18cGzkDd2qDkFmK"
+            "5DNoopXcvr1nVr9VJr75GxPfG6haSzHwVAFvbAkpdxL5DTyk",
+            "5GHDSFLdD8JFcfCYVrQT17C586nkCKvYqjTConLoMPPXBYvA"
           ]
         },
         "parachainInfo": {
@@ -41,23 +41,23 @@
         "session": {
           "keys": [
             [
-              "5ELMqbqXZCHGWAdmtKs13SjaABGUbX1vSEuksP6tTSwJCyWh",
-              "5ELMqbqXZCHGWAdmtKs13SjaABGUbX1vSEuksP6tTSwJCyWh",
+              "5DNoopXcvr1nVr9VJr75GxPfG6haSzHwVAFvbAkpdxL5DTyk",
+              "5DNoopXcvr1nVr9VJr75GxPfG6haSzHwVAFvbAkpdxL5DTyk",
               {
-                "aura": "5ELMqbqXZCHGWAdmtKs13SjaABGUbX1vSEuksP6tTSwJCyWh"
+                "aura": "5DNoopXcvr1nVr9VJr75GxPfG6haSzHwVAFvbAkpdxL5DTyk"
               }
             ],
             [
-              "5DMLtYFPK68E5PYxDuPRNBXZwiX2ZxcCC18cGzkDd2qDkFmK",
-              "5DMLtYFPK68E5PYxDuPRNBXZwiX2ZxcCC18cGzkDd2qDkFmK",
+              "5GHDSFLdD8JFcfCYVrQT17C586nkCKvYqjTConLoMPPXBYvA",
+              "5GHDSFLdD8JFcfCYVrQT17C586nkCKvYqjTConLoMPPXBYvA",
               {
-                "aura": "5DMLtYFPK68E5PYxDuPRNBXZwiX2ZxcCC18cGzkDd2qDkFmK"
+                "aura": "5GHDSFLdD8JFcfCYVrQT17C586nkCKvYqjTConLoMPPXBYvA"
               }
             ]
           ]
         },
         "sudo": {
-          "key": "5GxAvFRvFashDW5RfwvwxZWVjWEkqYksXivy4Q4TqkS35UMY"
+          "key": "5HjAfnX4934wsvmuoUAUU6QvUGYDutbtSTbnSPrc6RNtD3m8"
         }
       }
     }
