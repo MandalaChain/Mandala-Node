@@ -63,9 +63,9 @@ pub fn template_session_keys(keys: AuraId) -> mandala_runtime::SessionKeys {
 pub fn development_config() -> ChainSpec {
 	// Give your base currency a unit name and decimal places
 	let mut properties = sc_chain_spec::Properties::new();
-	properties.insert("tokenSymbol".into(), "UNIT".into());
-	properties.insert("tokenDecimals".into(), 12.into());
-	properties.insert("ss58Format".into(), 42.into());
+	properties.insert("tokenSymbol".into(), "KPGD".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("ss58Format".into(), 6629.into());
 
 	ChainSpec::builder(
 		mandala_runtime::WASM_BINARY
