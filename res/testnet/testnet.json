@@ -11,7 +11,7 @@
     "tokenSymbol": "KPGT"
   },
   "relay_chain": "rococo",
-  "para_id": 4376,
+  "para_id": 4380,
   "codeSubstitutes": {},
   "genesis": {
     "runtimeGenesis": {
@@ -33,7 +33,7 @@
           ]
         },
         "parachainInfo": {
-          "parachainId": 3365
+          "parachainId": 4380
         },
         "polkadotXcm": {
           "safeXcmVersion": 4
