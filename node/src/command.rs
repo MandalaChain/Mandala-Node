@@ -49,7 +49,7 @@ impl SubstrateCli for Cli {
     }
 
     fn author() -> String {
-        env!("CARGO_PKG_AUTHORS").into()
+        "Mandala Team".into()
     }
 
     fn support_url() -> String {
@@ -85,7 +85,7 @@ impl SubstrateCli for RelayChainCli {
     }
 
     fn author() -> String {
-        env!("CARGO_PKG_AUTHORS").into()
+        "Mandala Team".into()
     }
 
     fn support_url() -> String {
