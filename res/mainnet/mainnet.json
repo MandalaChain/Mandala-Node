@@ -11,7 +11,7 @@
     "tokenSymbol": "KPG"
   },
   "relay_chain": "polkadot",
-  "para_id": 3365,
+  "para_id": 3366,
   "codeSubstitutes": {},
   "genesis": {
     "runtimeGenesis": {
@@ -57,7 +57,7 @@
           ]
         },
         "parachainInfo": {
-          "parachainId": 3365
+          "parachainId": 3366
         },
         "polkadotXcm": {
           "safeXcmVersion": 4
