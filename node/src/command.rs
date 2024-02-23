@@ -16,6 +16,7 @@ use sc_cli::{
     SubstrateCli,
 };
 use sc_service::config::{ BasePath, PrometheusConfig };
+use sp_core::crypto::{ set_default_ss58_version, Ss58AddressFormat };
 use sp_runtime::traits::AccountIdConversion;
 
 use crate::{ chain_spec, cli::{ Cli, RelayChainCli, Subcommand }, service::new_partial };
@@ -121,6 +122,7 @@ macro_rules! construct_async_run {
 
 /// Parse command line arguments into service configuration.
 pub fn run() -> Result<()> {
+    set_default_ss58_version(Ss58AddressFormat::custom(mandala_runtime::SS58Prefix::get()));
     let cli = Cli::from_args();
 
     match &cli.subcommand {
