@@ -9,6 +9,7 @@ use mandala_runtime::{ opaque::{ Block, Hash }, RuntimeApi };
 
 // Cumulus Imports
 use cumulus_primitives_core::{ relay_chain::{ CollatorPair, ValidationCode }, ParaId };
+use cumulus_client_consensus_aura::collators::lookahead::{ self as aura, Params as AuraParams };
 use cumulus_client_collator::service::CollatorService;
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
 use cumulus_client_consensus_proposer::Proposer;
@@ -414,26 +415,32 @@ fn start_consensus(
         client.clone()
     );
 
-    let params = BasicAuraParams {
+    let params = AuraParams {
+		slot_duration,
         create_inherent_data_providers: move |_, ()| async move { Ok(()) },
         block_import,
-        para_client: client,
+        para_client: client.clone(),
+        para_backend: backend.clone(),
         relay_client: relay_chain_interface,
+        code_hash_provider: move |block_hash| {
+            client
+                .code_at(block_hash)
+                .ok()
+                .map(|c| ValidationCode::from(c).hash())
+        },
         sync_oracle,
         keystore,
         collator_key,
         para_id,
         overseer_handle,
-        slot_duration,
         relay_chain_slot_duration,
         proposer,
         collator_service,
-        // Very limited proposal time.
-        authoring_duration: Duration::from_millis(500),
-        collation_request_receiver: None,
+        authoring_duration: Duration::from_millis(1500),
+        reinitialize: false,
     };
 
-    let fut = basic_aura::run::<
+    let fut = aura::run::<
         Block,
         sp_consensus_aura::sr25519::AuthorityPair,
         _,
