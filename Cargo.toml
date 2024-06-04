@@ -117,6 +117,8 @@ pallet-collator-selection = { git = "https://github.com/paritytech/polkadot-sdk"
 parachain-info = { package = "staging-parachain-info", git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2", default-features = false }
 cumulus-client-collator = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2", default-features = false }
 cumulus-client-consensus-proposer = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2", default-features = false }
+cumulus-primitives-aura =  { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2", default-features = false }
+
 serde = { version = "1.0.197", default-features = false }
 serde_json = { version = "1.0.114", default-features = false }
 
