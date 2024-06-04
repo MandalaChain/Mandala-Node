@@ -78,6 +78,7 @@ parachains-common = { workspace = true }
 parachain-info = { package = "staging-parachain-info", workspace = true, default-features = false }
 pallet-utility = { workspace = true }
 pallet-multisig = { workspace = true }
+cumulus-primitives-aura = { workspace = true }
 
 
 # EVM
@@ -88,6 +89,7 @@ pallet-ethereum = { workspace = true }
 [features]
 default = ["std"]
 std = [
+    "cumulus-primitives-aura/std",
     "pallet-evm/std",
     "pallet-ethereum/std",
     "codec/std",
