@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["node", "pallets/*", "runtime/mandala"]
+members = ["node", "pallets/*", "runtime/mandala", "./runtime/niskala", "runtime/niskala"]
 
 
 [profile.release]
@@ -122,3 +122,7 @@ serde_json = { version = "1.0.114", default-features = false }
 
 # Build
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.2", default-features = false }
+
+# EVM
+pallet-evm = { git = "https://github.com/MandalaChain/frontier", branch = "mandala-polkadot-v1.7.2", default-features = false }
+pallet-ethereum = { git = "https://github.com/MandalaChain/frontier", branch = "mandala-polkadot-v1.7.2", default-features = false }
