@@ -82,13 +82,36 @@ cumulus-primitives-aura = { workspace = true }
 
 
 # EVM
-pallet-evm = { workspace = true }
-pallet-ethereum = { workspace = true }
+pallet-evm = { workspace = true } # ok
+pallet-ethereum = { workspace = true } # ok
+
+fp-account = { workspace = true, features = ["serde"] } # ok
+fp-evm = { workspace = true, features = ["serde"] } # ok
+fp-rpc = { workspace = true } # ok
+fp-self-contained = { workspace = true, features = ["serde"] } # ok
+
+pallet-base-fee = { workspace = true } # ok
+pallet-dynamic-fee = { workspace = true } # ok
+pallet-evm-chain-id = { workspace = true } # ok
+pallet-evm-precompile-modexp = { workspace = true } # ok
+pallet-evm-precompile-sha3fips = { workspace = true } # ok
+pallet-evm-precompile-simple = { workspace = true } # ok
+
 
 
 [features]
 default = ["std"]
 std = [
+    "pallet-evm-precompile-simple/std",
+    "pallet-evm-precompile-sha3fips/std",
+    "pallet-evm-precompile-modexp/std",
+    "pallet-evm-chain-id/std",
+    "pallet-dynamic-fee/std",
+    "pallet-base-fee/std",
+    "fp-self-contained/std",
+    "fp-rpc/std",
+    "fp-evm/std",
+    "fp-account/std",
     "cumulus-primitives-aura/std",
     "pallet-evm/std",
     "pallet-ethereum/std",
