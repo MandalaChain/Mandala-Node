@@ -1,0 +1,61 @@
+[package]
+name = "mandala-primitives"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+blake2-rfc = { workspace = true, optional = true }
+impl-serde = { workspace = true }
+libsecp256k1 = { workspace = true, features = ["hmac"] }
+log = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+sha3 = { workspace = true }
+
+# Substrate
+parity-scale-codec = { workspace = "codec" }
+scale-info = { workspace = true }
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-runtime-interface = { workspace = true }
+sp-std = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+xcm = { workspace = true }
+pallet-balances = { workspace = true }
+orml-traits = { workspace = true }
+pallet-authorship = { workspace = true }
+
+[dev-dependencies]
+hex = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+	"pallet-balances/std",
+	"xcm/std",
+	"orml-traits/std",
+	"frame-system/std",
+	"frame-support/std",
+	"full_crypto",
+	"hex/std",
+	"impl-serde/std",
+	"libsecp256k1/std",
+	"parity-scale-codec/std",
+	"serde/std",
+	"sha3/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
+
+full_crypto = [
+	"blake2-rfc",
+	"sp-runtime-interface/disable_target_static_assertions",
+]

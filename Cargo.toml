@@ -6,6 +6,7 @@ members = [
 	"runtime/mandala",
 	"./runtime/niskala",
 	"runtime/niskala",
+	"primitives",
 ]
 
 
@@ -76,6 +77,11 @@ scale-info = { version = "2.10.0", default-features = false, features = [
 	"derive",
 ] }
 smallvec = "1.11.0"
+blake2-rfc = { version = "0.2.18", default-features = false }
+impl-serde = { version = "0.3.1", default-features = false }
+libsecp256k1 = { version = "0.7", default-features = false }
+sha3 = { version = "0.10", default-features = false }
+hex = { version = "0.4.3", default-features = false }
 
 
 # Substrate
@@ -108,7 +114,8 @@ xcm-executor = { package = "staging-xcm-executor", git = "https://github.com/Man
 xcm = { package = "staging-xcm", git = "https://github.com/MandalaChain/polkadot-sdk", default-features = false, branch = "mandala-polkadot-v1.7.2" }
 pallet-message-queue = { git = "https://github.com/MandalaChain/polkadot-sdk", default-features = false, branch = "mandala-polkadot-v1.7.2" }
 parachains-common = { git = "https://github.com/MandalaChain/polkadot-sdk", default-features = false, branch = "mandala-polkadot-v1.7.2" }
-
+sp-runtime-interface = { git = "https://github.com/MandalaChain/polkadot-sdk", default-features = false, branch = "mandala-polkadot-v1.7.2" }
+orml-traits = { git = "https://github.com/moonbeam-foundation/open-runtime-module-library", branch = "moonbeam-polkadot-v1.7.2", default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/MandalaChain/polkadot-sdk", branch = "mandala-polkadot-v1.7.2", default-features = false }

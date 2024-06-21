@@ -97,11 +97,14 @@ pallet-evm-precompile-modexp = { workspace = true } # ok
 pallet-evm-precompile-sha3fips = { workspace = true } # ok
 pallet-evm-precompile-simple = { workspace = true } # ok
 
+mandala-primitives = { path = "../../primitives" }
+
 
 
 [features]
 default = ["std"]
 std = [
+    "mandala-primitives/std",
     "pallet-evm-precompile-simple/std",
     "pallet-evm-precompile-sha3fips/std",
     "pallet-evm-precompile-modexp/std",
