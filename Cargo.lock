@@ -5556,6 +5556,7 @@ dependencies = [
  "orml-traits",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-evm",
  "parity-scale-codec",
  "scale-info",
  "serde",

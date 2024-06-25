@@ -10,18 +10,21 @@ mod weights;
 pub mod xcm_config;
 mod precompiles;
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
-use pallet_evm::IdentityAddressMapping;
+use mandala_primitives::AccountId20;
+use pallet_evm::{ EnsureAddressNever, EnsureAddressSame, IdentityAddressMapping };
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
+use precompiles::NiskalaPrecompiles;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{ crypto::KeyTypeId, OpaqueMetadata, U256 };
+use sp_core::{ crypto::KeyTypeId, OpaqueMetadata, H160, U256 };
 use sp_runtime::{
     create_runtime_str,
     generic,
     impl_opaque_keys,
-    traits::{ BlakeTwo256, Block as BlockT, IdentifyAccount, Verify },
+    traits::{ BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Verify },
     transaction_validity::{ TransactionSource, TransactionValidity },
     ApplyExtrinsicResult,
+    ConsensusEngineId,
     MultiSignature,
 };
 
@@ -37,7 +40,15 @@ use frame_support::{
     dispatch::DispatchClass,
     genesis_builder_helper::{ build_config, create_default_config },
     parameter_types,
-    traits::{ ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, TransformOrigin },
+    traits::{
+        ConstBool,
+        ConstU32,
+        ConstU64,
+        ConstU8,
+        EitherOfDiverse,
+        FindAuthor,
+        TransformOrigin,
+    },
     weights::{
         constants::WEIGHT_REF_TIME_PER_SECOND,
         ConstantMultiplier,
@@ -188,8 +199,8 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("mandala-parachain"),
-    impl_name: create_runtime_str!("mandala-parachain"),
+    spec_name: create_runtime_str!("niskala-parachain"),
+    impl_name: create_runtime_str!("niskala-parachain"),
     authoring_version: 1,
     spec_version: 1,
     impl_version: 0,
@@ -232,6 +243,7 @@ const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 /// We allow for 0.5 of a second of compute with a 12 second average block time.
+pub const WEIGHT_MILLISECS_PER_BLOCK: u64 = 500;
 const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
     WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
     cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64
@@ -290,7 +302,7 @@ impl frame_system::Config for Runtime {
     /// The aggregated dispatch type that is available for extrinsics.
     type RuntimeCall = RuntimeCall;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = AccountIdLookup<AccountId, ()>;
+    type Lookup = IdentityLookup<AccountId>;
     /// The index type for storing how many extrinsics an account has signed.
     type Nonce = Nonce;
     /// The type for hashing blocks and tries.
@@ -545,6 +557,100 @@ impl pallet_message_queue::Config for Runtime {
     type ServiceWeight = MessageQueueServiceWeight;
 }
 
+impl pallet_evm_chain_id::Config for Runtime {}
+
+parameter_types! {
+	pub DefaultBaseFeePerGas: U256 = U256::from(1_000_000_000);
+	pub DefaultElasticity: Permill = Permill::from_parts(125_000);
+}
+
+pub struct BaseFeeThreshold;
+impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
+    fn lower() -> Permill {
+        Permill::zero()
+    }
+    fn ideal() -> Permill {
+        Permill::from_parts(500_000)
+    }
+    fn upper() -> Permill {
+        Permill::from_parts(1_000_000)
+    }
+}
+
+impl pallet_base_fee::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Threshold = BaseFeeThreshold;
+    type DefaultBaseFeePerGas = DefaultBaseFeePerGas;
+    type DefaultElasticity = DefaultElasticity;
+}
+
+const BLOCK_GAS_LIMIT: u64 = 30_000_000;
+const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
+
+/// The highest amount of new storage that can be created in a block (100KB).
+pub const BLOCK_STORAGE_LIMIT: u64 = 100 * 1024;
+
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(BLOCK_GAS_LIMIT);
+	pub const GasLimitPovSizeRatio: u64 = BLOCK_GAS_LIMIT.saturating_div(MAX_POV_SIZE);
+	pub PrecompilesValue: NiskalaPrecompiles<Runtime> = NiskalaPrecompiles::<_>::new();
+	pub WeightPerGas: Weight = Weight::from_parts(fp_evm::weight_per_gas(BLOCK_GAS_LIMIT, NORMAL_DISPATCH_RATIO, WEIGHT_MILLISECS_PER_BLOCK), 0);
+	pub SuicideQuickClearLimit: u32 = 0;
+
+    /// The amount of gas per storage (in bytes): BLOCK_GAS_LIMIT / BLOCK_STORAGE_LIMIT
+	/// (30_000_000 / 100 kb)
+	pub GasLimitStorageGrowthRatio: u64 = 292;
+    pub const EvmConfig:fp_evm::Config = fp_evm::Config::cancun();
+}
+
+// find the author from pallet session and aura, convert it into h160
+pub struct FindAccountFromAuthorIndexToH160<T, Inner>(sp_std::marker::PhantomData<(T, Inner)>);
+
+impl<T: pallet_session::Config<ValidatorId = AccountId>, Inner: FindAuthor<u32>> FindAuthor<H160>
+for FindAccountFromAuthorIndexToH160<T, Inner> {
+    fn find_author<'a, I>(digests: I) -> Option<H160>
+        where I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>
+    {
+        let i = Inner::find_author(digests)?;
+
+        let validators = <pallet_session::Pallet<T>>::validators();
+        validators
+            .get(i as usize)
+            .cloned()
+            .map(|account_id| account_id.into())
+    }
+}
+
+static EVM_CONFIG: fp_evm::Config = fp_evm::Config::cancun();
+
+impl pallet_evm::Config for Runtime {
+    type FeeCalculator = BaseFee;
+    type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Runtime>;
+    type CallOrigin = mandala_primitives::EnsureAccountId20;
+    type WithdrawOrigin = mandala_primitives::EnsureAccountId20;
+    type AddressMapping = IdentityAddressMapping;
+    type BlockGasLimit = BlockGasLimit;
+    type BlockHashMapping = pallet_evm::SubstrateBlockHashMapping<Runtime>;
+    type ChainId = EVMChainId;
+    type Currency = Balances;
+    type FindAuthor = FindAccountFromAuthorIndexToH160<Runtime, Aura>;
+    type Runner = pallet_evm::runner::stack::Runner<Self>;
+    type OnChargeTransaction = ();
+    type OnCreate = ();
+    type WeightInfo = pallet_evm::weights::SubstrateWeight<Runtime>;
+    type Timestamp = Timestamp;
+    type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+    type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
+    type PrecompilesType = NiskalaPrecompiles<Runtime>;
+    type PrecompilesValue = PrecompilesValue;
+    type RuntimeEvent = RuntimeEvent;
+    type SuicideQuickClearLimit = SuicideQuickClearLimit;
+    type WeightPerGas = WeightPerGas;
+    fn config() -> &'static fp_evm::Config {
+        &EVM_CONFIG
+    }
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime
@@ -580,8 +686,9 @@ construct_runtime!(
 		Multisig: pallet_multisig = 40,
 		Utility: pallet_utility = 41,
         // EVM stuff
-		// EVMChainId: pallet_evm_chain_id = 50,
-        // DynamicFee: pallet_dynamic_fee = 51,
+		EVMChainId: pallet_evm_chain_id = 50,
+        BaseFee: pallet_base_fee = 51,
+        EVM: pallet_evm = 52,
 	}
 );
 

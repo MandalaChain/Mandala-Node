@@ -1,6 +1,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_system::RawOrigin;
+use pallet_evm::EnsureAddressOrigin;
 use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sha3::{Digest, Keccak256};
@@ -183,6 +185,24 @@ impl From<libsecp256k1::PublicKey> for EthereumSigner {
 impl std::fmt::Display for EthereumSigner {
 	fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
 		write!(fmt, "ethereum signature: {:?}", H160::from_slice(&self.0))
+	}
+}
+
+/// Ensure that the address is AccountId20.
+pub struct EnsureAccountId20;
+
+impl<OuterOrigin> EnsureAddressOrigin<OuterOrigin> for EnsureAccountId20
+where
+	OuterOrigin: Into<Result<RawOrigin<AccountId20>, OuterOrigin>> + From<RawOrigin<AccountId20>>,
+{
+	type Success = AccountId20;
+
+	fn try_address_origin(address: &H160, origin: OuterOrigin) -> Result<AccountId20, OuterOrigin> {
+		let acc: AccountId20 = AccountId20::from(*address);
+		origin.into().and_then(|o| match o {
+			RawOrigin::Signed(who) if who == acc => Ok(who),
+			r => Err(OuterOrigin::from(r)),
+		})
 	}
 }
 

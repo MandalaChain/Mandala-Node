@@ -30,6 +30,7 @@ xcm = { workspace = true }
 pallet-balances = { workspace = true }
 orml-traits = { workspace = true }
 pallet-authorship = { workspace = true }
+pallet-evm = { workspace = true }
 
 [dev-dependencies]
 hex = { workspace = true }
@@ -37,6 +38,7 @@ hex = { workspace = true }
 [features]
 default = ["std"]
 std = [
+	"pallet-evm/std",
 	"full_crypto",
 	"scale-info/std",
 	"pallet-balances/std",
