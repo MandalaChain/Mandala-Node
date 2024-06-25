@@ -8,12 +8,13 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod weights;
 pub mod xcm_config;
-
+mod precompiles;
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
+use pallet_evm::IdentityAddressMapping;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{ crypto::KeyTypeId, OpaqueMetadata };
+use sp_core::{ crypto::KeyTypeId, OpaqueMetadata, U256 };
 use sp_runtime::{
     create_runtime_str,
     generic,
@@ -578,6 +579,9 @@ construct_runtime!(
 		// helper
 		Multisig: pallet_multisig = 40,
 		Utility: pallet_utility = 41,
+        // EVM stuff
+		// EVMChainId: pallet_evm_chain_id = 50,
+        // DynamicFee: pallet_dynamic_fee = 51,
 	}
 );
 
