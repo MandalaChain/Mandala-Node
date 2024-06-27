@@ -3057,6 +3057,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "evm-tracing-events"
+version = "0.1.0"
+source = "git+https://github.com/MandalaChain/moonbeam?branch=mandala-polkadot-v1.7.2#91e3f36c5567b3220fc7607f4ab6e6acfd6c0b81"
+dependencies = [
+ "environmental",
+ "ethereum",
+ "ethereum-types",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
+ "parity-scale-codec",
+ "sp-runtime-interface 24.0.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "exit-future"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4091,6 +4106,9 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "hex-literal"
@@ -4264,7 +4282,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core",
 ]
 
 [[package]]
@@ -5860,6 +5878,71 @@ dependencies = [
 ]
 
 [[package]]
+name = "moonbeam-evm-tracer"
+version = "0.1.0"
+source = "git+https://github.com/MandalaChain/moonbeam?branch=mandala-polkadot-v1.7.2#91e3f36c5567b3220fc7607f4ab6e6acfd6c0b81"
+dependencies = [
+ "ethereum-types",
+ "evm",
+ "evm-gasometer",
+ "evm-runtime",
+ "evm-tracing-events",
+ "fp-evm",
+ "moonbeam-primitives-ext",
+ "pallet-evm",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "moonbeam-primitives-ext"
+version = "0.1.0"
+source = "git+https://github.com/MandalaChain/moonbeam?branch=mandala-polkadot-v1.7.2#91e3f36c5567b3220fc7607f4ab6e6acfd6c0b81"
+dependencies = [
+ "ethereum-types",
+ "evm-tracing-events",
+ "parity-scale-codec",
+ "sp-externalities 0.25.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+ "sp-runtime-interface 24.0.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+ "sp-std 14.0.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "moonbeam-rpc-primitives-debug"
+version = "0.1.0"
+source = "git+https://github.com/MandalaChain/moonbeam?branch=mandala-polkadot-v1.7.2#91e3f36c5567b3220fc7607f4ab6e6acfd6c0b81"
+dependencies = [
+ "environmental",
+ "ethereum",
+ "ethereum-types",
+ "hex",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+]
+
+[[package]]
+name = "moonbeam-rpc-primitives-txpool"
+version = "0.6.0"
+source = "git+https://github.com/MandalaChain/moonbeam?branch=mandala-polkadot-v1.7.2#91e3f36c5567b3220fc7607f4ab6e6acfd6c0b81"
+dependencies = [
+ "ethereum",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkadot-v1.7.2)",
+]
+
+[[package]]
 name = "multiaddr"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6128,6 +6211,7 @@ dependencies = [
  "cumulus-primitives-aura",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
+ "evm-tracing-events",
  "fp-account",
  "fp-evm",
  "fp-rpc",
@@ -6142,6 +6226,9 @@ dependencies = [
  "hex-literal",
  "log",
  "mandala-primitives",
+ "moonbeam-evm-tracer",
+ "moonbeam-rpc-primitives-debug",
+ "moonbeam-rpc-primitives-txpool",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -6369,7 +6456,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "681030a937600a36906c185595136d26abfebb4aa9c65701cefcaf8578bb982b"
 dependencies = [
- "proc-macro-crate 3.1.0",
+ "proc-macro-crate 1.1.3",
  "proc-macro2",
  "quote",
  "syn 2.0.68",
@@ -12290,7 +12377,7 @@ dependencies = [
 [[package]]
 name = "sp-crypto-ec-utils"
 version = "0.10.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "ark-bls12-377",
  "ark-bls12-377-ext",
@@ -12352,7 +12439,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "14.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -12373,7 +12460,7 @@ dependencies = [
 [[package]]
 name = "sp-externalities"
 version = "0.25.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "environmental",
  "parity-scale-codec",
@@ -12591,7 +12678,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface"
 version = "24.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "bytes",
  "impl-trait-for-tuples",
@@ -12623,7 +12710,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface-proc-macro"
 version = "17.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "Inflector",
  "expander 2.2.1",
@@ -12716,7 +12803,7 @@ source = "git+https://github.com/MandalaChain/polkadot-sdk?branch=mandala-polkad
 [[package]]
 name = "sp-std"
 version = "14.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 
 [[package]]
 name = "sp-storage"
@@ -12734,7 +12821,7 @@ dependencies = [
 [[package]]
 name = "sp-storage"
 version = "19.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "impl-serde 0.4.0",
  "parity-scale-codec",
@@ -12771,7 +12858,7 @@ dependencies = [
 [[package]]
 name = "sp-tracing"
 version = "16.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "parity-scale-codec",
  "tracing",
@@ -12871,7 +12958,7 @@ dependencies = [
 [[package]]
 name = "sp-wasm-interface"
 version = "20.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk#63e264446f6cabff06be72912eae902662dcb699"
+source = "git+https://github.com/paritytech/polkadot-sdk#929a273ae1ba647628c4ba6e2f8737e58b596d6a"
 dependencies = [
  "impl-trait-for-tuples",
  "log",
@@ -14747,7 +14834,7 @@ version = "0.51.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca229916c5ee38c2f2bc1e9d8f04df975b4bd93f9955dc69fabb5d91270045c9"
 dependencies = [
- "windows-core 0.51.1",
+ "windows-core",
  "windows-targets 0.48.5",
 ]
 
@@ -14758,15 +14845,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1f8cf84f35d2db49a46868f947758c7a1138116f7fac3bc844f43ade1292e64"
 dependencies = [
  "windows-targets 0.48.5",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
-dependencies = [
- "windows-targets 0.52.5",
 ]
 
 [[package]]
