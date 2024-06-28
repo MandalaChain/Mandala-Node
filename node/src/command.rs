@@ -1,9 +1,12 @@
-use std::net::SocketAddr;
+use std::{ io::Write, net::SocketAddr, sync::Arc };
 
+use codec::Encode;
 use cumulus_primitives_core::ParaId;
+use fc_db::kv::frontier_database_dir;
 use frame_benchmarking_cli::{ BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE };
+#[cfg(feature = "niskala-native")]
+use niskala_runtime::Block;
 use log::info;
-use mandala_runtime::Block;
 use sc_cli::{
     ChainSpec,
     CliConfiguration,
@@ -12,27 +15,49 @@ use sc_cli::{
     KeystoreParams,
     NetworkParams,
     Result,
+    RuntimeVersion,
     SharedParams,
     SubstrateCli,
 };
-use sc_service::config::{ BasePath, PrometheusConfig };
-use sp_core::crypto::{ set_default_ss58_version, Ss58AddressFormat };
-use sp_runtime::traits::AccountIdConversion;
+use sc_service::{ config::{ BasePath, PrometheusConfig }, DatabaseSource, PartialComponents };
+use sp_core::hexdisplay::HexDisplay;
+use sp_runtime::{ traits::{ AccountIdConversion, Block as BlockT, Header, Zero }, StateVersion };
 
-use crate::{ chain_spec, cli::{ Cli, RelayChainCli, Subcommand }, service::new_partial };
+#[cfg(feature = "try-runtime")]
+use crate::service::ParachainNativeExecutor;
+use crate::{
+    chain_spec::{ self, niskala::{ Dev, NodeChainSpec } },
+    cli::{ Cli, RelayChainCli, Subcommand },
+    eth::db_config_dir,
+    service::new_partial,
+};
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
     Ok(match id {
-        "dev" => Box::new(chain_spec::development_config()),
-        "template-rococo" => Box::new(chain_spec::local_testnet_config()),
-        "" | "local" => Box::new(chain_spec::local_testnet_config()),
-        path => Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
+        #[cfg(feature = "niskala-native")]
+        "dev" =>
+            Box::new(
+                <NodeChainSpec<Dev> as chain_spec::niskala::CustomChainSpecProperties>::build()
+            ),
+        // "template-rococo" => Box::new(chain_spec::local_testnet_config()),
+        #[cfg(feature = "niskala-native")]
+        path =>
+            Box::new(
+                chain_spec::niskala::ChainSpec::from_json_file(std::path::PathBuf::from(path))?
+            ),
     })
 }
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        "Mandala Collator".into()
+        #[cfg(feature = "niskala-native")]
+        {
+            "Niskala Collator".into()
+        }
+        #[cfg(feature = "mandala-native")]
+        {
+            "Mandala Collator".into()
+        }
     }
 
     fn impl_version() -> String {
@@ -50,7 +75,7 @@ impl SubstrateCli for Cli {
     }
 
     fn author() -> String {
-        "Mandala Team".into()
+        env!("CARGO_PKG_AUTHORS").into()
     }
 
     fn support_url() -> String {
@@ -86,7 +111,7 @@ impl SubstrateCli for RelayChainCli {
     }
 
     fn author() -> String {
-        "Mandala Team".into()
+        env!("CARGO_PKG_AUTHORS").into()
     }
 
     fn support_url() -> String {
@@ -107,59 +132,118 @@ macro_rules! construct_async_run {
         | $components:ident,
         $cli:ident,
         $cmd:ident,
-        $config:ident | $($code:tt)*
+        $config:ident,
+        $eth_config:ident | $($code:tt)*
     ) => {
         {
 		let runner = $cli.create_runner($cmd)?;
 		runner.async_run(|$config| {
-			let $components = new_partial(&$config)?;
+			let $components = new_partial(&$config, &$eth_config)?;
 			let task_manager = $components.task_manager;
 			{ $( $code )* }.map(|v| (v, task_manager))
 		})
         }
     };
 }
+impl Cli {
+    fn runtime_version(spec: &Box<dyn sc_service::ChainSpec>) -> &'static RuntimeVersion {
+        match spec {
+            #[cfg(feature = "niskala-native")]
+            spec => {
+                return &niskala_runtime::VERSION;
+            }
+            #[cfg(not(feature = "niskala-native"))]
+            _ => panic!("invalid chain spec"),
+        }
+    }
+}
 
 /// Parse command line arguments into service configuration.
 pub fn run() -> Result<()> {
-    set_default_ss58_version(Ss58AddressFormat::custom(mandala_runtime::SS58Prefix::get()));
     let cli = Cli::from_args();
+    let eth_cfg = cli.eth.clone();
 
     match &cli.subcommand {
         Some(Subcommand::Key(cmd)) => cmd.run(&cli),
+
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
         }
         Some(Subcommand::CheckBlock(cmd)) => {
-            construct_async_run!(|components, cli, cmd, config| {
+            construct_async_run!(|components, cli, cmd, config, eth_cfg| {
                 Ok(cmd.run(components.client, components.import_queue))
             })
         }
-        Some(Subcommand::ExportBlocks(cmd)) => {
-            construct_async_run!(|components, cli, cmd, config| {
-                Ok(cmd.run(components.client, config.database))
-            })
-        }
+
         Some(Subcommand::ExportState(cmd)) => {
-            construct_async_run!(|components, cli, cmd, config| {
+            construct_async_run!(|components, cli, cmd, config, eth_cfg| {
                 Ok(cmd.run(components.client, config.chain_spec))
             })
         }
+
+        Some(Subcommand::ExportBlocks(cmd)) => {
+            construct_async_run!(|components, cli, cmd, config, eth_cfg| {
+                Ok(cmd.run(components.client, config.database))
+            })
+        }
         Some(Subcommand::ImportBlocks(cmd)) => {
-            construct_async_run!(|components, cli, cmd, config| {
+            construct_async_run!(|components, cli, cmd, config, eth_cfg| {
                 Ok(cmd.run(components.client, components.import_queue))
             })
         }
         Some(Subcommand::Revert(cmd)) => {
-            construct_async_run!(|components, cli, cmd, config| {
+            construct_async_run!(|components, cli, cmd, config, eth_cfg| {
                 Ok(cmd.run(components.client, components.backend, None))
             })
         }
         Some(Subcommand::PurgeChain(cmd)) => {
             let runner = cli.create_runner(cmd)?;
-
             runner.sync_run(|config| {
+                // Remove Frontier offchain db
+                let db_config_dir = db_config_dir(&config);
+                match cli.eth.frontier_backend_type {
+                    crate::eth::BackendType::KeyValue => {
+                        let frontier_database_config = match config.database {
+                            DatabaseSource::RocksDb { .. } =>
+                                DatabaseSource::RocksDb {
+                                    path: frontier_database_dir(&db_config_dir, "db"),
+                                    cache_size: 0,
+                                },
+                            DatabaseSource::ParityDb { .. } =>
+                                DatabaseSource::ParityDb {
+                                    path: frontier_database_dir(&db_config_dir, "paritydb"),
+                                },
+                            _ => {
+                                return Err(
+                                    format!("Cannot purge `{:?}` database", config.database).into()
+                                );
+                            }
+                        };
+                        cmd.base.run(frontier_database_config)?;
+                    }
+                    crate::eth::BackendType::Sql => {
+                        let db_path = db_config_dir.join("sql");
+                        match std::fs::remove_dir_all(&db_path) {
+                            Ok(_) => {
+                                println!("{:?} removed.", &db_path);
+                            }
+                            Err(ref err) if err.kind() == std::io::ErrorKind::NotFound => {
+                                eprintln!("{:?} did not exist.", &db_path);
+                            }
+                            Err(err) => {
+                                return Err(
+                                    format!(
+                                        "Cannot purge `{:?}` database: {:?}",
+                                        db_path,
+                                        err
+                                    ).into()
+                                );
+                            }
+                        };
+                    }
+                }
+
                 let polkadot_cli = RelayChainCli::new(
                     &config,
                     [RelayChainCli::executable_name()].iter().chain(cli.relay_chain_args.iter())
@@ -176,10 +260,39 @@ pub fn run() -> Result<()> {
         }
         Some(Subcommand::ExportGenesisHead(cmd)) => {
             let runner = cli.create_runner(cmd)?;
-            runner.sync_run(|config| {
-                let partials = new_partial(&config)?;
 
-                cmd.run(partials.client)
+            runner.sync_run(|config| {
+                let partials = new_partial(&config, &eth_cfg)?;
+                let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+                let state_version = Cli::runtime_version(&spec).state_version();
+                let output_buf = {
+                    #[cfg(feature = "niskala-native")]
+                    {
+                        let block: niskala_runtime::Block = generate_genesis_block(
+                            &*spec,
+                            state_version
+                        )?;
+                        let raw_header = block.header().encode();
+                        let output_buf = if cmd.raw {
+                            raw_header
+                        } else {
+                            format!(
+                                "0x{:?}",
+                                HexDisplay::from(&block.header().encode())
+                            ).into_bytes()
+                        };
+
+                        output_buf
+                    }
+                };
+
+                if let Some(output) = &cmd.output {
+                    std::fs::write(output, output_buf)?;
+                } else {
+                    std::io::stdout().write_all(&output_buf)?;
+                }
+
+                Ok(())
             })
         }
         Some(Subcommand::ExportGenesisWasm(cmd)) => {
@@ -193,17 +306,19 @@ pub fn run() -> Result<()> {
             let runner = cli.create_runner(cmd)?;
             // Switch on the concrete benchmark sub-command-
             match cmd {
-                BenchmarkCmd::Pallet(cmd) => if cfg!(feature = "runtime-benchmarks") {
-                    runner.sync_run(|config| cmd.run::<Block, ()>(config))
-                } else {
-                    Err(
-                        "Benchmarking wasn't enabled when building the node. \
+                BenchmarkCmd::Pallet(cmd) => {
+                    if cfg!(feature = "runtime-benchmarks") {
+                        runner.sync_run(|config| cmd.run::<Block, ()>(config))
+                    } else {
+                        Err(
+                            "Benchmarking wasn't enabled when building the node. \
 					You can enable it with `--features runtime-benchmarks`.".into()
-                    )
+                        )
+                    }
                 }
                 BenchmarkCmd::Block(cmd) =>
                     runner.sync_run(|config| {
-                        let partials = new_partial(&config)?;
+                        let partials = new_partial(&config, &eth_cfg)?;
                         cmd.run(partials.client)
                     }),
                 #[cfg(not(feature = "runtime-benchmarks"))]
@@ -220,25 +335,59 @@ pub fn run() -> Result<()> {
                 #[cfg(feature = "runtime-benchmarks")]
                 BenchmarkCmd::Storage(cmd) =>
                     runner.sync_run(|config| {
-                        let partials = new_partial(&config)?;
+                        let partials = new_partial(&config, &eth_cfg)?;
                         let db = partials.backend.expose_db();
                         let storage = partials.backend.expose_storage();
                         cmd.run(config, partials.client.clone(), db, storage)
                     }),
-                BenchmarkCmd::Machine(cmd) =>
-                    runner.sync_run(|config|
-                        cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())
-                    ),
+                BenchmarkCmd::Machine(cmd) => {
+                    runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
+                }
                 // NOTE: this allows the Client to leniently implement
                 // new benchmark commands without requiring a companion MR.
                 #[allow(unreachable_patterns)]
                 _ => Err("Benchmarking sub-command unsupported".into()),
             }
         }
+        #[cfg(feature = "try-runtime")]
+        Some(Subcommand::TryRuntime(cmd)) => {
+            use frontier_parachain_runtime::MILLISECS_PER_BLOCK;
+            use sc_executor::{ sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch };
+            use try_runtime_cli::block_building_info::timestamp_with_aura_info;
+
+            let runner = cli.create_runner(cmd)?;
+
+            type HostFunctionsOf<E> = ExtendedHostFunctions<
+                sp_io::SubstrateHostFunctions,
+                <E as NativeExecutionDispatch>::ExtendHostFunctions
+            >;
+
+            // grab the task manager.
+            let registry = &runner
+                .config()
+                .prometheus_config.as_ref()
+                .map(|cfg| &cfg.registry);
+            let task_manager = sc_service::TaskManager
+                ::new(runner.config().tokio_handle.clone(), *registry)
+                .map_err(|e| format!("Error: {:?}", e))?;
+            let info_provider = timestamp_with_aura_info(MILLISECS_PER_BLOCK);
+
+            runner.async_run(|_| {
+                Ok((
+                    cmd.run::<Block, HostFunctionsOf<ParachainNativeExecutor>, _>(
+                        Some(info_provider)
+                    ),
+                    task_manager,
+                ))
+            })
+        }
+        #[cfg(not(feature = "try-runtime"))]
         Some(Subcommand::TryRuntime) =>
             Err(
-                "The `try-runtime` subcommand has been migrated to a standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer being maintained here and will be removed entirely some time after January 2024. Please remove this subcommand from your runtime and use the standalone CLI.".into()
+                "Try-runtime was not enabled when building the node. \
+			You can enable it with `--features try-runtime`.".into()
             ),
+
         None => {
             let runner = cli.create_runner(&cli.run.normalize())?;
             let collator_options = cli.run.collator_options();
@@ -253,10 +402,13 @@ pub fn run() -> Result<()> {
                     )
                     .flatten();
 
-                let para_id = chain_spec::Extensions
-                    ::try_get(&*config.chain_spec)
-                    .map(|e| e.para_id)
-                    .ok_or("Could not find parachain ID in chain-spec.")?;
+                let para_id = {
+                    #[cfg(feature = "niskala-native")]
+                    chain_spec::niskala::Extensions
+                        ::try_get(&*config.chain_spec)
+                        .map(|e| e.para_id)
+                        .ok_or("Could not find parachain ID in chain-spec.")?
+                };
 
                 let polkadot_cli = RelayChainCli::new(
                     &config,
@@ -277,13 +429,15 @@ pub fn run() -> Result<()> {
                     tokio_handle
                 ).map_err(|err| format!("Relay chain argument error: {}", err))?;
 
-                info!("Parachain Account: {parachain_account}");
+                info!("Parachain id: {:?}", id);
+                info!("Parachain Account: {}", parachain_account);
                 info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
                 crate::service
                     ::start_parachain_node(
                         config,
                         polkadot_config,
+                        eth_cfg,
                         collator_options,
                         id,
                         hwbench
@@ -419,4 +573,43 @@ impl CliConfiguration<Self> for RelayChainCli {
     fn node_name(&self) -> Result<String> {
         self.base.base.node_name()
     }
+}
+
+/// Generate the genesis block from a given ChainSpec.
+pub fn generate_genesis_block<Block: BlockT>(
+    chain_spec: &dyn ChainSpec,
+    genesis_state_version: StateVersion
+) -> std::result::Result<Block, String> {
+    let storage = chain_spec.build_storage()?;
+
+    let child_roots = storage.children_default.iter().map(|(sk, child_content)| {
+        let state_root = <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
+            child_content.data.clone().into_iter().collect(),
+            genesis_state_version
+        );
+        (sk.clone(), state_root.encode())
+    });
+    let state_root = <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
+        storage.top.clone().into_iter().chain(child_roots).collect(),
+        genesis_state_version
+    );
+
+    let extrinsics_root =
+        <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
+            Vec::new(),
+            genesis_state_version
+        );
+
+    Ok(
+        Block::new(
+            <<Block as BlockT>::Header as sp_runtime::traits::Header>::new(
+                Zero::zero(),
+                extrinsics_root,
+                state_root,
+                Default::default(),
+                Default::default()
+            ),
+            Default::default()
+        )
+    )
 }
