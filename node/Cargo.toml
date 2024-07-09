@@ -11,13 +11,13 @@ clap = { version = "4.4.18", features = ["derive"] }
 log = "0.4.20"
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 serde = { version = "1.0.195", features = ["derive"] }
-jsonrpsee = { version = "0.20.3", features = ["server"] }
+jsonrpsee = { version = "0.22.5", features = ["server"] }
 futures = "0.3.28"
 serde_json = "1.0.111"
 tokio = { workspace = true }
 
 # Local
-mandala-runtime = { path = "../runtime/mandala" }
+mandala-runtime = { path = "../runtime/mandala", optional = true }
 niskala-runtime = { path = "../runtime/niskala", optional = true }
 
 # Substrate
@@ -95,15 +95,16 @@ fp-evm = { workspace = true, features = ["std"] }
 
 
 # Moonbeam
+moonbeam-primitives-ext = { workspace = true, features = ["std"] }
 
-moonbeam-rpc-primitives-debug = { workspace = true }
-moonbeam-rpc-primitives-txpool = { workspace = true }
-moonbeam-evm-tracer = { workspace = true }
+# moonbeam-rpc-primitives-debug = { workspace = true }
+# moonbeam-rpc-primitives-txpool = { workspace = true }
+# moonbeam-evm-tracer = { workspace = true }
 
-# tracing client 
-moonbeam-rpc-debug = { workspace = true }
-moonbeam-rpc-trace = { workspace = true }
-moonbeam-rpc-txpool = { workspace = true }
+# # tracing client 
+# moonbeam-rpc-debug = { workspace = true }
+# moonbeam-rpc-trace = { workspace = true }
+# moonbeam-rpc-txpool = { workspace = true }
 mandala-primitives = { path = "../primitives" }
 hex-literal = { workspace = true }
 
@@ -113,6 +114,8 @@ substrate-build-script-utils = { workspace = true }
 
 [features]
 niskala-native = ["niskala-runtime"]
+mandala-native = []
+
 default = ["niskala-native"]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",

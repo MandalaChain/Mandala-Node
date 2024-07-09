@@ -17,14 +17,13 @@ else
 fi
 
 cd $ROOT
-cargo build --release
+cargo build --release 
 rm -rf $ROOT/zombienet/binaries/mandala || true
 cp $ROOT/target/release/mandala $ROOT/zombienet/binaries/
 
 cd $ROOT/zombienet
 cp $CHAIN_PATH .
 
-PARACHAIN_WASM=$ROOT/res/$CHAIN/state/genesis-wasm.wasm
-PARACHAIN_WASM=$PARACHAIN_WASM CHAIN=$CHAIN.json PATH=$ROOT/zombienet/binaries:$PATH $ZOMBIENET_PATH spawn $ROOT/zombienet/config.toml --provider native
+CHAIN=$CHAIN.json PATH=$ROOT/zombienet/binaries:$PATH $ZOMBIENET_PATH spawn $ROOT/zombienet/config.toml --provider native
 
 rm $CHAIN.json

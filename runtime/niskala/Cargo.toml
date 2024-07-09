@@ -95,19 +95,19 @@ pallet-evm-precompile-simple = { workspace = true }   # ok
 
 mandala-primitives = { path = "../../primitives", default-features = false }
 
-moonbeam-rpc-primitives-debug = { workspace = true }
-evm-tracing-events = { workspace = true, optional = true }
-moonbeam-rpc-primitives-txpool = { workspace = true }
-moonbeam-evm-tracer = { workspace = true, optional = true }
+# moonbeam-rpc-primitives-debug = { workspace = true }
+# evm-tracing-events = { workspace = true, optional = true }
+# moonbeam-rpc-primitives-txpool = { workspace = true }
+# moonbeam-evm-tracer = { workspace = true, optional = true }
 
 
 [features]
 default = ["std"]
 std = [
-    "moonbeam-evm-tracer/std",
-    "moonbeam-rpc-primitives-txpool/std",
-    "evm-tracing-events/std",
-    "moonbeam-rpc-primitives-debug/std",
+    # "moonbeam-evm-tracer/std",
+    # "moonbeam-rpc-primitives-txpool/std",
+    # "evm-tracing-events/std",
+    # "moonbeam-rpc-primitives-debug/std",
     "mandala-primitives/std",
     "pallet-evm-precompile-simple/std",
     "pallet-evm-precompile-sha3fips/std",
@@ -223,5 +223,4 @@ try-runtime = [
     "sp-runtime/try-runtime",
 ]
 
-evm-tracing = ["evm-tracing-events", "moonbeam-evm-tracer"]
-experimental = ["pallet-aura/experimental"]
+# evm-tracing = ["evm-tracing-events", "moonbeam-evm-tracer"]

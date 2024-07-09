@@ -4,6 +4,7 @@
 use std::{ sync::Arc, time::Duration };
 
 use cumulus_client_cli::CollatorOptions;
+use fc_rpc::{ StorageOverride, StorageOverrideHandler };
 use futures::FutureExt;
 // Local Runtime Types
 #[cfg(feature = "mandala-native")]
@@ -40,7 +41,7 @@ use sc_executor::{
     WasmExecutor,
     DEFAULT_HEAP_ALLOC_STRATEGY,
 };
-use sc_network::NetworkBlock;
+use sc_network::{ config, NetworkBlock };
 use sc_network_sync::SyncingService;
 use sc_service::{ Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager };
 use sc_telemetry::{ Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle };
@@ -63,8 +64,21 @@ use crate::eth::{
 // Native executor type.
 pub struct ParachainNativeExecutor;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub type HostFunctions = (
+    sp_io::SubstrateHostFunctions,
+    frame_benchmarking::benchmarking::HostFunctions,
+    moonbeam_primitives_ext::moonbeam_ext::HostFunctions,
+);
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type HostFunctions = (
+    sp_io::SubstrateHostFunctions,
+    moonbeam_primitives_ext::moonbeam_ext::HostFunctions,
+);
+
 impl sc_executor::NativeExecutionDispatch for ParachainNativeExecutor {
-    type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+    type ExtendHostFunctions = HostFunctions;
 
     fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
         #[cfg(feature = "niskala-native")]
@@ -81,9 +95,23 @@ impl sc_executor::NativeExecutionDispatch for ParachainNativeExecutor {
     }
 }
 
-type ParachainExecutor = NativeElseWasmExecutor<ParachainNativeExecutor>;
+// workaround for rocksdb since currently doesnt work nicely with txpool
+fn prevent_rocks_db(config: &mut Configuration) {
+    match &config.database {
+        fc_db::DatabaseSource::Auto { paritydb_path, rocksdb_path, cache_size } => {
+            config.database = fc_db::DatabaseSource::ParityDb { path: paritydb_path.to_owned() };
+        }
+        fc_db::DatabaseSource::RocksDb { path, cache_size } => {
+            config.database = fc_db::DatabaseSource::ParityDb { path: path.to_owned() };
+        }
+        fc_db::DatabaseSource::ParityDb { path } => (),
+        fc_db::DatabaseSource::Custom { db, require_create_flag } => (),
+    }
+}
 
-type ParachainClient = TFullClient<Block, RuntimeApi, ParachainExecutor>;
+type ParachainExecutor = WasmExecutor<HostFunctions>;
+
+pub type ParachainClient = TFullClient<Block, RuntimeApi, ParachainExecutor>;
 
 type ParachainBackend = TFullBackend<Block>;
 
@@ -97,7 +125,7 @@ type FrontierBlockImport = TFrontierBlockImport<Block, Arc<ParachainClient>, Par
 /// be able to perform chain operations.
 #[allow(clippy::type_complexity)]
 pub fn new_partial(
-    config: &Configuration,
+    config: &mut Configuration,
     eth_config: &EthConfiguration
 ) -> Result<
     PartialComponents<
@@ -110,12 +138,14 @@ pub fn new_partial(
             ParachainBlockImport,
             Option<Telemetry>,
             Option<TelemetryWorkerHandle>,
-            FrontierBackend,
-            Arc<fc_rpc::OverrideHandle<Block>>,
+            Arc<fc_db::Backend<Block, ParachainClient>>,
+            Arc<dyn StorageOverride<Block>>,
         )
     >,
     sc_service::Error
 > {
+    prevent_rocks_db(config);
+
     let telemetry = config.telemetry_endpoints
         .clone()
         .filter(|x| !x.is_empty())
@@ -133,7 +163,7 @@ pub fn new_partial(
         |h| HeapAllocStrategy::Static { extra_pages: h as _ }
     );
 
-    let wasm = WasmExecutor::builder()
+    let executor = WasmExecutor::builder()
         .with_execution_method(config.wasm_method)
         .with_onchain_heap_alloc_strategy(heap_pages)
         .with_offchain_heap_alloc_strategy(heap_pages)
@@ -141,7 +171,6 @@ pub fn new_partial(
         .with_runtime_cache_size(config.runtime_cache_size)
         .build();
 
-    let executor = ParachainExecutor::new_with_wasm_executor(wasm);
 
     let (client, backend, keystore_container, task_manager) = sc_service::new_full_parts::<
         Block,
@@ -169,42 +198,50 @@ pub fn new_partial(
         client.clone()
     );
 
-    let overrides = crate::rpc::overrides_handle(client.clone());
-    let frontier_backend = match eth_config.frontier_backend_type {
-        BackendType::KeyValue =>
-            FrontierBackend::KeyValue(
-                fc_db::kv::Backend::open(
-                    Arc::clone(&client),
-                    &config.database,
-                    &db_config_dir(config)
-                )?
-            ),
-        BackendType::Sql => {
-            let db_path = db_config_dir(config).join("sql");
-            std::fs::create_dir_all(&db_path).expect("failed creating sql db directory");
-            let backend = futures::executor
-                ::block_on(
-                    fc_db::sql::Backend::new(
-                        fc_db::sql::BackendConfig::Sqlite(fc_db::sql::SqliteBackendConfig {
-                            path: std::path::Path
-                                ::new("sqlite:///")
-                                .join(db_path)
-                                .join("frontier.db3")
-                                .to_str()
-                                .unwrap(),
-                            create_if_missing: true,
-                            thread_count: eth_config.frontier_sql_backend_thread_count,
-                            cache_size: eth_config.frontier_sql_backend_cache_size,
-                        }),
-                        eth_config.frontier_sql_backend_pool_size,
-                        std::num::NonZeroU32::new(eth_config.frontier_sql_backend_num_ops_timeout),
-                        overrides.clone()
+    let overrides = Arc::new(StorageOverrideHandler::new(client.clone()));
+    let frontier_backend = (
+        match eth_config.frontier_backend_type {
+            BackendType::KeyValue => {
+                let b = Arc::new(
+                    fc_db::kv::Backend::open(
+                        Arc::clone(&client),
+                        &config.database,
+                        &db_config_dir(config)
+                    )?
+                );
+
+                FrontierBackend::KeyValue(b)
+            }
+            BackendType::Sql => {
+                let db_path = db_config_dir(config).join("sql");
+                std::fs::create_dir_all(&db_path).expect("failed creating sql db directory");
+                let backend = futures::executor
+                    ::block_on(
+                        fc_db::sql::Backend::new(
+                            fc_db::sql::BackendConfig::Sqlite(fc_db::sql::SqliteBackendConfig {
+                                path: std::path::Path
+                                    ::new("sqlite:///")
+                                    .join(db_path)
+                                    .join("frontier.db3")
+                                    .to_str()
+                                    .unwrap(),
+                                create_if_missing: true,
+                                thread_count: eth_config.frontier_sql_backend_thread_count,
+                                cache_size: eth_config.frontier_sql_backend_cache_size,
+                            }),
+                            eth_config.frontier_sql_backend_pool_size,
+                            std::num::NonZeroU32::new(
+                                eth_config.frontier_sql_backend_num_ops_timeout
+                            ),
+                            overrides.clone()
+                        )
                     )
-                )
-                .unwrap_or_else(|err| panic!("failed creating sql backend: {:?}", err));
-            FrontierBackend::Sql(backend)
+                    .unwrap_or_else(|err| panic!("failed creating sql backend: {:?}", err))
+                    .into();
+                FrontierBackend::Sql(backend)
+            }
         }
-    };
+    ).into();
 
     let frontier_block_import = FrontierBlockImport::new(client.clone(), client.clone());
 
@@ -265,7 +302,6 @@ fn build_import_queue(
             client,
             block_import,
             create_inherent_data_providers,
-            slot_duration,
             &task_manager.spawn_essential_handle(),
             config.prometheus_registry(),
             telemetry
@@ -318,11 +354,10 @@ fn start_consensus(
     );
 
     let params = AuraParams {
-        slot_duration,
         create_inherent_data_providers: move |_, ()| async move { Ok(()) },
         block_import,
         para_client: client.clone(),
-        para_backend: backend.clone(),
+        para_backend: backend,
         relay_client: relay_chain_interface,
         code_hash_provider: move |block_hash| {
             client
@@ -382,7 +417,7 @@ async fn start_node_impl(
         transaction_pool,
         other: (block_import, mut telemetry, telemetry_worker_handle, frontier_backend, overrides),
         ..
-    } = new_partial(&parachain_config, &eth_config)?;
+    } = new_partial(&mut parachain_config, &eth_config)?;
 
     let FrontierPartialComponents { filter_pool, fee_history_cache, fee_history_cache_limit } =
         new_frontier_partial(&eth_config)?;
@@ -399,7 +434,11 @@ async fn start_node_impl(
     let validator = parachain_config.role.is_authority();
     let prometheus_registry = parachain_config.prometheus_registry().cloned();
     let import_queue_service = import_queue.service();
-    let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+    let net_config = sc_network::config::FullNetworkConfiguration::<
+        _,
+        _,
+        sc_network::NetworkWorker<_, _>
+    >::new(&parachain_config.network);
 
     let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
         build_network(BuildNetworkParams {
@@ -427,7 +466,7 @@ async fn start_node_impl(
                     transaction_pool: Some(
                         OffchainTransactionPoolFactory::new(transaction_pool.clone())
                     ),
-                    network_provider: network.clone(),
+                    network_provider: Arc::new(network.clone()),
                     enable_http_requests: true,
                     custom_extensions: |_| vec![],
                 })
@@ -461,9 +500,9 @@ async fn start_node_impl(
         enable_dev_signer: eth_config.enable_dev_signer,
         network: network.clone(),
         sync: sync_service.clone(),
-        frontier_backend: match frontier_backend.clone() {
-            fc_db::Backend::KeyValue(b) => Arc::new(b),
-            fc_db::Backend::Sql(b) => Arc::new(b),
+        frontier_backend: match &*frontier_backend {
+            fc_db::Backend::KeyValue(b) => b.clone(),
+            fc_db::Backend::Sql(b) => b.clone(),
         },
         overrides: overrides.clone(),
         block_data_cache: Arc::new(
@@ -522,7 +561,7 @@ async fn start_node_impl(
         telemetry: telemetry.as_mut(),
     })?;
 
-    spawn_frontier_tasks(
+    spawn_frontier_tasks::<RuntimeApi>(
         &task_manager,
         client.clone(),
         backend.clone(),

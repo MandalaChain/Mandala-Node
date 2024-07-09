@@ -4,6 +4,7 @@ timeout = 1000
 [relaychain]
 default_command = "polkadot"
 chain = "rococo-local"
+chain_spec_path = "./plain.json"
 
 [[relaychain.nodes]]
 name = "alice"
@@ -13,15 +14,10 @@ validator = true
 name = "bob"
 validator = true
 
-[[parachains]]
-id = 2000
-chain = "{{CHAIN}}"
-genesis_wasm_path = "{{PARACHAIN_WASM}}"
-cumulus_based = true
+# [[parachains]]
+# id = 2000
+# chain_spec_path = "./dev.json"
 
-
-[parachains.collator]
-name = "mandala-collator-1"
-command = "mandala"
-
-
+# [parachains.collator]
+# name = "mandala-collator-1"
+# command = "mandala"

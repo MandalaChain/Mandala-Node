@@ -3,7 +3,7 @@ use std::{ collections::BTreeMap, path::PathBuf, sync::{ Arc, Mutex }, time::Dur
 use futures::{ future, prelude::* };
 // Substrate
 use sc_client_api::BlockchainEvents;
-use sc_executor::{ NativeElseWasmExecutor, NativeExecutionDispatch };
+use sc_executor::{ NativeElseWasmExecutor, NativeExecutionDispatch, WasmExecutor };
 
 use sc_network_sync::SyncingService;
 use sc_service::{
@@ -17,7 +17,7 @@ use sp_api::ConstructRuntimeApi;
 // Frontier
 pub use fc_consensus::FrontierBlockImport;
 use fc_mapping_sync::{ kv::MappingSyncWorker, SyncStrategy };
-use fc_rpc::{ EthTask, OverrideHandle };
+use fc_rpc::{ EthTask, StorageOverride };
 pub use fc_rpc_core::types::{ FeeHistoryCache, FeeHistoryCacheLimit, FilterPool };
 // Local
 #[cfg(feature = "niskala-native")]
@@ -27,7 +27,7 @@ use niskala_runtime::opaque::Block;
 use mandala_runtime::opaque::Block;
 
 /// Frontier DB backend type.
-pub type FrontierBackend = fc_db::Backend<Block>;
+pub type FrontierBackend<C> = fc_db::Backend<Block, C>;
 
 pub fn db_config_dir(config: &Configuration) -> PathBuf {
     config.base_path.config_dir(config.chain_spec.id())
@@ -124,30 +124,27 @@ impl<Api> EthCompatRuntimeApiCollection
             fp_rpc::EthereumRuntimeRPCApi<Block> +
             fp_rpc::ConvertTransactionRuntimeApi<Block> {}
 
-pub async fn spawn_frontier_tasks<RuntimeApi, Executor>(
+pub async fn spawn_frontier_tasks<RuntimeApi>(
     task_manager: &TaskManager,
-    client: Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
+    client: Arc<crate::service::ParachainClient>,
     backend: Arc<TFullBackend<Block>>,
-    frontier_backend: FrontierBackend,
+    frontier_backend: Arc<FrontierBackend<crate::service::ParachainClient>>,
     filter_pool: Option<FilterPool>,
-    overrides: Arc<OverrideHandle<Block>>,
+    overrides: Arc<dyn StorageOverride<Block>>,
     fee_history_cache: FeeHistoryCache,
     fee_history_cache_limit: FeeHistoryCacheLimit,
     sync: Arc<SyncingService<Block>>,
     pubsub_notification_sinks: Arc<fc_mapping_sync::EthereumBlockNotificationSinks<fc_mapping_sync::EthereumBlockNotification<Block>>>
 )
     where
-        RuntimeApi: ConstructRuntimeApi<
-            Block,
-            TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>
-        >,
+        RuntimeApi: ConstructRuntimeApi<Block, crate::service::ParachainClient>,
         RuntimeApi: Send + Sync + 'static,
-        RuntimeApi::RuntimeApi: EthCompatRuntimeApiCollection,
-        Executor: NativeExecutionDispatch + 'static
+        RuntimeApi::RuntimeApi: EthCompatRuntimeApiCollection
 {
     // Spawn main mapping sync worker background task.
 
-    match frontier_backend {
+    // Spawn main mapping sync worker background task.
+    match &*frontier_backend {
         fc_db::Backend::KeyValue(b) => {
             task_manager.spawn_essential_handle().spawn(
                 "frontier-mapping-sync-worker",
@@ -158,7 +155,7 @@ pub async fn spawn_frontier_tasks<RuntimeApi, Executor>(
                     client.clone(),
                     backend,
                     overrides.clone(),
-                    Arc::new(b),
+                    b.to_owned(),
                     3,
                     0,
                     SyncStrategy::Parachain,
@@ -174,10 +171,10 @@ pub async fn spawn_frontier_tasks<RuntimeApi, Executor>(
                 fc_mapping_sync::sql::SyncWorker::run(
                     client.clone(),
                     backend,
-                    Arc::new(b),
+                    b.clone(),
                     client.import_notification_stream(),
                     fc_mapping_sync::sql::SyncWorkerConfig {
-                        read_notification_timeout: Duration::from_secs(10),
+                        read_notification_timeout: Duration::from_secs(30),
                         check_indexed_blocks_interval: Duration::from_secs(60),
                     },
                     fc_mapping_sync::SyncStrategy::Parachain,

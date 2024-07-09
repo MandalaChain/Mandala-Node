@@ -21,7 +21,10 @@ use sc_cli::{
 };
 use sc_service::{ config::{ BasePath, PrometheusConfig }, DatabaseSource, PartialComponents };
 use sp_core::hexdisplay::HexDisplay;
-use sp_runtime::{ traits::{ AccountIdConversion, Block as BlockT, Header, Zero }, StateVersion };
+use sp_runtime::{
+    traits::{ AccountIdConversion, Block as BlockT, HashingFor, Header, Zero },
+    StateVersion,
+};
 
 #[cfg(feature = "try-runtime")]
 use crate::service::ParachainNativeExecutor;
@@ -39,7 +42,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
             Box::new(
                 <NodeChainSpec<Dev> as chain_spec::niskala::CustomChainSpecProperties>::build()
             ),
-        // "template-rococo" => Box::new(chain_spec::local_testnet_config()),
+        // "template-rococo" => Box::new(chain_spec::mandala::local_testnet_config()),
         #[cfg(feature = "niskala-native")]
         path =>
             Box::new(
@@ -137,8 +140,8 @@ macro_rules! construct_async_run {
     ) => {
         {
 		let runner = $cli.create_runner($cmd)?;
-		runner.async_run(|$config| {
-			let $components = new_partial(&$config, &$eth_config)?;
+		runner.async_run(|mut $config| {
+			let $components = new_partial(&mut $config, &$eth_config)?;
 			let task_manager = $components.task_manager;
 			{ $( $code )* }.map(|v| (v, task_manager))
 		})
@@ -261,36 +264,10 @@ pub fn run() -> Result<()> {
         Some(Subcommand::ExportGenesisHead(cmd)) => {
             let runner = cli.create_runner(cmd)?;
 
-            runner.sync_run(|config| {
-                let partials = new_partial(&config, &eth_cfg)?;
+            runner.sync_run(|mut config| {
+                let partials = new_partial(&mut config, &eth_cfg)?;
                 let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
-                let state_version = Cli::runtime_version(&spec).state_version();
-                let output_buf = {
-                    #[cfg(feature = "niskala-native")]
-                    {
-                        let block: niskala_runtime::Block = generate_genesis_block(
-                            &*spec,
-                            state_version
-                        )?;
-                        let raw_header = block.header().encode();
-                        let output_buf = if cmd.raw {
-                            raw_header
-                        } else {
-                            format!(
-                                "0x{:?}",
-                                HexDisplay::from(&block.header().encode())
-                            ).into_bytes()
-                        };
-
-                        output_buf
-                    }
-                };
-
-                if let Some(output) = &cmd.output {
-                    std::fs::write(output, output_buf)?;
-                } else {
-                    std::io::stdout().write_all(&output_buf)?;
-                }
+                cmd.run(partials.client);
 
                 Ok(())
             })
@@ -308,7 +285,9 @@ pub fn run() -> Result<()> {
             match cmd {
                 BenchmarkCmd::Pallet(cmd) => {
                     if cfg!(feature = "runtime-benchmarks") {
-                        runner.sync_run(|config| cmd.run::<Block, ()>(config))
+                        runner.sync_run(|config|
+                            cmd.run::<HashingFor<Block>, crate::service::HostFunctions>(config)
+                        )
                     } else {
                         Err(
                             "Benchmarking wasn't enabled when building the node. \
@@ -317,8 +296,8 @@ pub fn run() -> Result<()> {
                     }
                 }
                 BenchmarkCmd::Block(cmd) =>
-                    runner.sync_run(|config| {
-                        let partials = new_partial(&config, &eth_cfg)?;
+                    runner.sync_run(|mut config| {
+                        let partials = new_partial(&mut config, &eth_cfg)?;
                         cmd.run(partials.client)
                     }),
                 #[cfg(not(feature = "runtime-benchmarks"))]
@@ -335,7 +314,7 @@ pub fn run() -> Result<()> {
                 #[cfg(feature = "runtime-benchmarks")]
                 BenchmarkCmd::Storage(cmd) =>
                     runner.sync_run(|config| {
-                        let partials = new_partial(&config, &eth_cfg)?;
+                        let partials = new_partial(&mut config, &eth_cfg)?;
                         let db = partials.backend.expose_db();
                         let storage = partials.backend.expose_storage();
                         cmd.run(config, partials.client.clone(), db, storage)
@@ -583,16 +562,18 @@ pub fn generate_genesis_block<Block: BlockT>(
     let storage = chain_spec.build_storage()?;
 
     let child_roots = storage.children_default.iter().map(|(sk, child_content)| {
-        let state_root = <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
-            child_content.data.clone().into_iter().collect(),
-            genesis_state_version
-        );
+        let state_root =
+            <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
+                child_content.data.clone().into_iter().collect(),
+                genesis_state_version
+            );
         (sk.clone(), state_root.encode())
     });
-    let state_root = <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
-        storage.top.clone().into_iter().chain(child_roots).collect(),
-        genesis_state_version
-    );
+    let state_root =
+        <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(
+            storage.top.clone().into_iter().chain(child_roots).collect(),
+            genesis_state_version
+        );
 
     let extrinsics_root =
         <<<Block as BlockT>::Header as sp_runtime::traits::Header>::Hashing as sp_runtime::traits::Hash>::trie_root(

@@ -1,12 +1,7 @@
 use std::{ collections::BTreeMap, sync::Arc };
-
-use fc_rpc::{
-    pending::AuraConsensusDataProvider,
-    RuntimeApiStorageOverride,
-    SchemaV1Override,
-    SchemaV2Override,
-    SchemaV3Override,
-};
+use fc_rpc::DebugApiServer;
+// TODO : integrate tracing api
+use fc_rpc::{ pending::AuraConsensusDataProvider, Debug, RuntimeApiStorageOverride };
 use fc_rpc_core::EthApiServer;
 use fp_storage::EthereumStorageSchema;
 use jsonrpsee::RpcModule;
@@ -17,7 +12,7 @@ use sc_client_api::{
     AuxStore,
     UsageProvider,
 };
-use sc_network::NetworkService;
+use sc_network::service::traits::NetworkService;
 use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
 use sc_transaction_pool::{ ChainApi, Pool };
@@ -29,41 +24,12 @@ use sp_consensus_aura::{ sr25519::AuthorityId as AuraId, AuraApi };
 use sp_core::H256;
 use sp_runtime::traits::Block as BlockT;
 // Frontier
-pub use fc_rpc::{ EthBlockDataCacheTask, EthConfig, OverrideHandle, StorageOverride };
+pub use fc_rpc::{ EthBlockDataCacheTask, EthConfig, StorageOverride };
 // #[cfg(feature = "txpool")]
 use fc_rpc::{ TxPool, TxPoolApiServer };
 pub use fc_rpc_core::types::{ FeeHistoryCache, FeeHistoryCacheLimit, FilterPool };
 use fp_rpc::{ ConvertTransaction, ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi };
 
-
-
-pub fn overrides_handle<B, C, BE>(client: Arc<C>) -> Arc<OverrideHandle<B>>
-    where
-        B: BlockT,
-        C: ProvideRuntimeApi<B>,
-        C::Api: EthereumRuntimeRPCApi<B>,
-        C: HeaderBackend<B> + StorageProvider<B, BE> + 'static,
-        BE: Backend<B> + 'static
-{
-    let mut overrides_map = BTreeMap::new();
-    overrides_map.insert(
-        EthereumStorageSchema::V1,
-        Box::new(SchemaV1Override::new(client.clone())) as Box<dyn StorageOverride<_>>
-    );
-    overrides_map.insert(
-        EthereumStorageSchema::V2,
-        Box::new(SchemaV2Override::new(client.clone())) as Box<dyn StorageOverride<_>>
-    );
-    overrides_map.insert(
-        EthereumStorageSchema::V3,
-        Box::new(SchemaV3Override::new(client.clone())) as Box<dyn StorageOverride<_>>
-    );
-
-    Arc::new(OverrideHandle {
-        schemas: overrides_map,
-        fallback: Box::new(RuntimeApiStorageOverride::new(client.clone())),
-    })
-}
 
 /// Extra dependencies for Ethereum compatibility.
 pub struct EthDeps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
@@ -80,13 +46,13 @@ pub struct EthDeps<C, P, A: ChainApi, CT, B: BlockT, CIDP> {
     /// Whether to enable dev signer
     pub enable_dev_signer: bool,
     /// Network service
-    pub network: Arc<NetworkService<B, B::Hash>>,
+    pub network: Arc<dyn NetworkService>,
     /// Chain syncing service
     pub sync: Arc<SyncingService<B>>,
     /// Frontier Backend.
     pub frontier_backend: Arc<dyn fc_api::Backend<B>>,
     /// Ethereum data access overrides.
-    pub overrides: Arc<OverrideHandle<B>>,
+    pub overrides: Arc<dyn StorageOverride<B>>,
     /// Cache for Ethereum block data.
     pub block_data_cache: Arc<EthBlockDataCacheTask<B>>,
     /// EthFilterApi pool.
@@ -223,12 +189,12 @@ pub fn create_eth<B, C, P, CT, BE, A, CIDP, EC: EthConfig<B, C>>(
         io.merge(
             EthFilter::new(
                 client.clone(),
-                frontier_backend,
+                frontier_backend.clone(),
                 graph.clone(),
                 filter_pool,
                 500_usize, // max stored filters
                 max_past_logs,
-                block_data_cache
+                block_data_cache.clone(),
             ).into_rpc()
         )?;
     }
@@ -239,7 +205,7 @@ pub fn create_eth<B, C, P, CT, BE, A, CIDP, EC: EthConfig<B, C>>(
             client.clone(),
             sync,
             subscription_task_executor,
-            overrides,
+            overrides.clone(),
             pubsub_notification_sinks
         ).into_rpc()
     )?;
@@ -254,6 +220,16 @@ pub fn create_eth<B, C, P, CT, BE, A, CIDP, EC: EthConfig<B, C>>(
     )?;
 
     io.merge(Web3::new(client.clone()).into_rpc())?;
+
+    io.merge(
+		Debug::new(
+			client.clone(),
+			frontier_backend,
+			overrides,
+			block_data_cache,
+		)
+		.into_rpc(),
+	)?;
 
     io.merge(TxPool::new(client, graph).into_rpc())?;
 

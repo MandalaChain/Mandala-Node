@@ -139,6 +139,9 @@ pub type Barrier = TrailingSetTopicAsId<
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
+type HrmpNewChannelOpenRequestHandler = ();
+	type HrmpChannelAcceptedHandler = ();
+	type HrmpChannelClosingHandler = ();
     type RuntimeCall = RuntimeCall;
     type XcmSender = XcmRouter;
     // How to withdraw and deposit an asset.
