@@ -56,13 +56,15 @@ sp-version = { workspace = true }
 pallet-xcm = { workspace = true }
 polkadot-parachain-primitives = { workspace = true }
 polkadot-runtime-common = { workspace = true }
-xcm = { package = "staging-xcm", workspace=true, default-features = false }
-xcm-builder = { package = "staging-xcm-builder", workspace=true, default-features = false }
-xcm-executor = { package = "staging-xcm-executor", workspace=true, default-features = false }
+xcm = { package = "staging-xcm", workspace = true, default-features = false }
+xcm-builder = { package = "staging-xcm-builder", workspace = true, default-features = false }
+xcm-executor = { package = "staging-xcm-executor", workspace = true, default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { workspace = true }
-cumulus-pallet-parachain-system = { workspace = true , features = ["parameterized-consensus-hook"] }
+cumulus-pallet-parachain-system = { workspace = true, features = [
+	"parameterized-consensus-hook",
+] }
 cumulus-pallet-session-benchmarking = { workspace = true }
 cumulus-pallet-xcm = { workspace = true }
 cumulus-pallet-xcmp-queue = { workspace = true }
@@ -71,8 +73,8 @@ cumulus-primitives-utility = { workspace = true }
 pallet-collator-selection = { workspace = true }
 parachains-common = { workspace = true }
 parachain-info = { package = "staging-parachain-info", workspace = true, default-features = false }
-pallet-utility ={workspace = true}
-pallet-multisig ={workspace = true}
+pallet-utility = { workspace = true }
+pallet-multisig = { workspace = true }
 
 [features]
 default = ["std"]
@@ -177,5 +179,3 @@ try-runtime = [
 	"polkadot-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
 ]
-
-experimental = ["pallet-aura/experimental"]

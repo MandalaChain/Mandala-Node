@@ -3,6 +3,7 @@ name = "mandala"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
+authors = ["Mandala Team"]
 
 
 [dependencies]
@@ -10,12 +11,14 @@ clap = { version = "4.4.18", features = ["derive"] }
 log = "0.4.20"
 codec = { package = "parity-scale-codec", version = "3.0.0" }
 serde = { version = "1.0.195", features = ["derive"] }
-jsonrpsee = { version = "0.20.3", features = ["server"] }
+jsonrpsee = { version = "0.22.5", features = ["server"] }
 futures = "0.3.28"
 serde_json = "1.0.111"
+tokio = { workspace = true }
 
 # Local
-mandala-runtime = { path = "../runtime" }
+mandala-runtime = { path = "../runtime/mandala", optional = true }
+niskala-runtime = { path = "../runtime/niskala", optional = true }
 
 # Substrate
 frame-benchmarking = { workspace = true }
@@ -48,7 +51,7 @@ sp-runtime = { workspace = true }
 sp-timestamp = { workspace = true }
 substrate-frame-rpc-system = { workspace = true }
 substrate-prometheus-endpoint = { workspace = true }
-
+sc-consensus-manual-seal = { workspace = true }
 # Polkadot
 polkadot-cli = { workspace = true }
 polkadot-primitives = { workspace = true }
@@ -65,12 +68,55 @@ cumulus-primitives-core = { workspace = true }
 cumulus-primitives-parachain-inherent = { workspace = true }
 cumulus-relay-chain-interface = { workspace = true }
 color-print = "0.3.4"
+sp-inherents = { workspace = true, features = ["std"] }
+
+# Frontier
+fc-consensus = { workspace = true }
+fc-db = { workspace = true }
+fc-api = { workspace = true }
+fc-mapping-sync = { workspace = true, features = ["sql"] }
+fc-rpc = { workspace = true, features = [
+	"rpc-binary-search-estimate",
+	"txpool",
+] }
+fc-rpc-core = { workspace = true }
+fp-consensus = { workspace = true, features = ["std"] }
+fp-rpc = { workspace = true, features = ["std"] }
+fp-storage = { workspace = true, features = ["std"] }
+pallet-ethereum = { workspace = true, features = [
+	"forbid-evm-reentrancy",
+	"std",
+] }
+
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = [
+	"std",
+] }
+fp-evm = { workspace = true, features = ["std"] }
+
+
+# Moonbeam
+moonbeam-primitives-ext = { workspace = true, features = ["std"] }
+
+# moonbeam-rpc-primitives-debug = { workspace = true }
+# moonbeam-rpc-primitives-txpool = { workspace = true }
+# moonbeam-evm-tracer = { workspace = true }
+
+# # tracing client 
+# moonbeam-rpc-debug = { workspace = true }
+# moonbeam-rpc-trace = { workspace = true }
+# moonbeam-rpc-txpool = { workspace = true }
+mandala-primitives = { path = "../primitives" }
+hex-literal = { workspace = true }
+
 
 [build-dependencies]
-substrate-build-script-utils = { workspace= true}
+substrate-build-script-utils = { workspace = true }
 
 [features]
-default = []
+niskala-native = ["niskala-runtime"]
+mandala-native = []
+
+default = ["niskala-native"]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",
@@ -82,6 +128,7 @@ runtime-benchmarks = [
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
+	"niskala-runtime/try-runtime",
 	"mandala-runtime/try-runtime",
 	"polkadot-cli/try-runtime",
 	"sp-runtime/try-runtime",

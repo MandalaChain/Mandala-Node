@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 
 mod chain_spec;
+mod eth;
 #[macro_use]
 mod service;
 mod cli;
