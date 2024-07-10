@@ -29,7 +29,7 @@ use sp_runtime::{
 #[cfg(feature = "try-runtime")]
 use crate::service::ParachainNativeExecutor;
 use crate::{
-    chain_spec::{ self, niskala::{ Dev, NodeChainSpec } },
+    chain_spec::{ self, niskala::{ Dev, Live, NodeChainSpec } },
     cli::{ Cli, RelayChainCli, Subcommand },
     eth::db_config_dir,
     service::new_partial,
@@ -42,7 +42,8 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
             Box::new(
                 <NodeChainSpec<Dev> as chain_spec::niskala::CustomChainSpecProperties>::build()
             ),
-        // "template-rococo" => Box::new(chain_spec::mandala::local_testnet_config()),
+        #[cfg(feature = "niskala-native")]
+        "rococo" => Box::new(<NodeChainSpec<Live> as chain_spec::niskala::CustomChainSpecProperties>::build()),
         #[cfg(feature = "niskala-native")]
         path =>
             Box::new(

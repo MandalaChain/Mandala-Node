@@ -29,10 +29,18 @@ use sc_service::{ ChainType, GenericChainSpec, Properties };
 use sc_telemetry::TelemetryEndpoints;
 use serde::{ Serialize, Deserialize };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{ ecdsa, sr25519, Pair, Public, TypedGet, H160, U256 };
+use sp_core::{ crypto::Ss58Codec, ecdsa, sr25519, Pair, Public, TypedGet, H160, U256 };
 use sp_runtime::{ traits::{ IdentifyAccount, Verify }, MultiAddress };
 use cumulus_primitives_core::ParaId;
 
+macro_rules! account_id {
+    ($id:literal) => {
+        AccountId::from(hex_literal::hex!($id))
+    };
+    () => {
+
+    };
+}
 // The URL for the telemetry server.
 const DEFAULT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
@@ -99,7 +107,7 @@ pub trait CustomChainSpecProperties {
         Self::chain_spec_properties_ext(default)
     }
 
-    // default prefunded pandi accounts, override this if you have some custom prefunded accounts
+    // default prefunded accounts, override this if you have some custom prefunded accounts
     fn endowed_accounts() -> Vec<AccountId> {
         vec![
             // Balthar
@@ -298,44 +306,81 @@ impl CustomChainSpecProperties for NodeChainSpec<Dev> {
 }
 
 // TODO
-// impl CustomChainSpecProperties for NodeChainSpec<Live> {
-//     fn token_symbol() -> &'static str {
-//         "KPGD"
-//     }
+impl CustomChainSpecProperties for NodeChainSpec<Live> {
+    fn token_symbol() -> &'static str {
+        "KPGT"
+    }
 
-//     fn token_decimals() -> u8 {
-//         18
-//     }
+    fn token_decimals() -> u8 {
+        18
+    }
 
-//     fn evm_chain_id() -> u64 {
-//         6025
-//     }
+    fn evm_chain_id() -> u64 {
+        6025
+    }
 
-//     fn initial_balance() -> u128 {
-//         1_000_000 * KPGD
-//     }
+    fn initial_balance() -> u128 {
+        100_000_000 * UNIT
+    }
 
-//     fn chain_name() -> &'static str {
-//         "ID chain local"
-//     }
+    fn chain_name() -> &'static str {
+        "Niskala"
+    }
 
-//     fn chain_identifier() -> &'static str {
-//         "local"
-//     }
+    fn chain_identifier() -> &'static str {
+        "live"
+    }
+    fn initial_authorities() -> Vec<AuraId> {
+        vec![
+            // collator 1
+            authority_keys_from_public("5HMa8oTYwr5viSwQBSbWgM7vxxiCcgLUgSbcumExjEyJ8sTr"),
+            // collator 2
+            authority_keys_from_public("5HTaZj7BtHFN5NsK5CYcK99ZPmH8ESz78hybbjmftKsCKyn1")
+        ]
+    }
 
-//     fn initial_authorities() -> Vec<(AuraId, GrandpaId)> {
-//         vec![
-//             authority_keys_from_seed("Alice"),
-//             authority_keys_from_seed("Bob"),
-//             authority_keys_from_seed("Charlie"),
-//             authority_keys_from_seed("Ferdie")
-//         ]
-//     }
+    fn chain_type() -> ChainType {
+        ChainType::Live
+    }
 
-//     fn chain_type() -> ChainType {
-//         ChainType::Local
-//     }
-// }
+    fn root_key() -> AccountId {
+        account_id!("Cea1fA4027315dEfC217054bc16c97C3527d9A0E")
+    }
+
+    fn endowed_accounts() -> Vec<AccountId> {
+        vec![
+            // collator 1
+            account_id!("B14fAa1D5a6213BF946C51FCC0097C5E40B7758A"),
+            // collator 2
+            account_id!("fb8d71863b415DC999C4f475A229aFa147c786e4"),
+            // sudo
+            account_id!("Cea1fA4027315dEfC217054bc16c97C3527d9A0E"),
+            // team
+            account_id!("cf34cEfE42aB033Db814639f72EA37baD3e82219"),
+            // foundation
+            account_id!("e6D8A2F367250bc677a3D566E3Aeb526697C7399")
+        ]
+    }
+
+    fn extension() -> Extensions {
+        Extensions {
+            para_id: 4475,
+            relay_chain: "rococo".into(),
+        }
+    }
+
+    fn parachain_id() -> u32 {
+        4475
+    }
+
+    fn protocol_id() -> &'static str {
+        "niskala/live"
+    }
+
+    fn fork_id() -> &'static str {
+        "niskala/live"
+    }
+}
 // ----------------------------------------- End   dev chainspec custom -----------------------------------------
 
 /// we locked using sr25519 and derive the evm key from it
@@ -377,4 +422,8 @@ type AccountPublic = <Signature as Verify>::Signer;
 /// Generate an Aura authority key.
 pub fn authority_keys_from_seed(s: &str) -> AuraId {
     Account::get_from_seed_with::<AuraId>(s)
+}
+
+pub fn authority_keys_from_public(s: &str) -> AuraId {
+    AuraId::from_ss58check(s).expect("static values are valid; qed")
 }
