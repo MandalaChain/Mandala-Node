@@ -3,7 +3,7 @@
 
 use frame_system::RawOrigin;
 use pallet_evm::EnsureAddressOrigin;
-use parity_scale_codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sha3::{Digest, Keccak256};
 use sp_core::{ecdsa, H160};
