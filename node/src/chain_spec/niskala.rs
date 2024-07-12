@@ -364,13 +364,13 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
 
     fn extension() -> Extensions {
         Extensions {
-            para_id: 4475,
-            relay_chain: "rococo".into(),
+            para_id: 4022,
+            relay_chain: "paseo".into(),
         }
     }
 
     fn parachain_id() -> u32 {
-        4475
+        4022
     }
 
     fn protocol_id() -> &'static str {

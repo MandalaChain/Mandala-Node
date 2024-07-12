@@ -43,7 +43,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
                 <NodeChainSpec<Dev> as chain_spec::niskala::CustomChainSpecProperties>::build()
             ),
         #[cfg(feature = "niskala-native")]
-        "rococo" => Box::new(<NodeChainSpec<Live> as chain_spec::niskala::CustomChainSpecProperties>::build()),
+        "paseo" => Box::new(<NodeChainSpec<Live> as chain_spec::niskala::CustomChainSpecProperties>::build()),
         #[cfg(feature = "niskala-native")]
         path =>
             Box::new(
