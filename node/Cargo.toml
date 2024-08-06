@@ -113,8 +113,8 @@ hex-literal = { workspace = true }
 substrate-build-script-utils = { workspace = true }
 
 [features]
-niskala-native = ["niskala-runtime"]
-mandala-native = []
+niskala-native = ["niskala-runtime", "mandala-runtime"]
+mandala-native = ["mandala-runtime"]
 
 default = ["niskala-native"]
 runtime-benchmarks = [
