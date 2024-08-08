@@ -96,9 +96,16 @@ impl Extensions {
     }
 }
 
+#[cfg(feature = "niskala-native")]
 pub fn template_session_keys(keys: AuraId) -> niskala_runtime::SessionKeys {
     niskala_runtime::SessionKeys { aura: keys }
 }
+
+#[cfg(feature = "mandala-native")]
+pub fn template_session_keys(keys: AuraId) -> mandala_runtime::SessionKeys {
+    mandala_runtime::SessionKeys { aura: keys }
+}
+
 pub trait CustomChainSpecProperties {
     fn wasm_binary() -> &'static [u8] {
         WASM_BINARY.expect("Development wasm not available")

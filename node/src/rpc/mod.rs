@@ -8,7 +8,11 @@
 use std::sync::Arc;
 
 // FIXME : change to use the actual block type when configuring mandala
+#[cfg(feature = "niskala-native")]
 use niskala_runtime::{opaque::Block, AccountId, Balance, Nonce};
+
+#[cfg(feature = "mandala-native")]
+use mandala_runtime::{opaque::Block, AccountId, Balance, Nonce};
 
 use sc_client_api::{
 	backend::{AuxStore, Backend, StorageProvider},

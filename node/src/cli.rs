@@ -119,6 +119,11 @@ impl RelayChainCli {
             {
                 crate::chain_spec::niskala::Extensions::try_get(&*para_config.chain_spec)
             }
+
+            #[cfg(feature = "mandala-native")]
+            {
+                crate::chain_spec::mandala::Extensions::try_get(&*para_config.chain_spec)
+            }
         };
         let chain_id = extension.map(|e| e.relay_chain.clone());
         let base_path = Some(para_config.base_path.path().join("polkadot"));

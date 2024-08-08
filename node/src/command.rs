@@ -6,6 +6,9 @@ use fc_db::kv::frontier_database_dir;
 use frame_benchmarking_cli::{ BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE };
 #[cfg(feature = "niskala-native")]
 use niskala_runtime::Block;
+#[cfg(feature = "mandala-native")]
+use mandala_runtime::Block;
+
 use log::info;
 use sc_cli::{
     ChainSpec,
@@ -28,8 +31,13 @@ use sp_runtime::{
 
 #[cfg(feature = "try-runtime")]
 use crate::service::ParachainNativeExecutor;
+#[cfg(feature = "niskala-native")]
+use crate::chain_spec::niskala::{ Dev, Live, NodeChainSpec };
+#[cfg(feature = "mandala-native")]
+use crate::chain_spec::mandala::{ Dev, Live, NodeChainSpec };
+
 use crate::{
-    chain_spec::{ self, niskala::{ Dev, Live, NodeChainSpec } },
+    chain_spec::{ *, self },
     cli::{ Cli, RelayChainCli, Subcommand },
     eth::db_config_dir,
     service::new_partial,
@@ -43,12 +51,31 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
                 <NodeChainSpec<Dev> as chain_spec::niskala::CustomChainSpecProperties>::build()
             ),
         #[cfg(feature = "niskala-native")]
-        "paseo" => Box::new(<NodeChainSpec<Live> as chain_spec::niskala::CustomChainSpecProperties>::build()),
-        #[cfg(feature = "niskala-native")]
-        path =>
+        "paseo" =>
             Box::new(
-                chain_spec::niskala::ChainSpec::from_json_file(std::path::PathBuf::from(path))?
+                <NodeChainSpec<Live> as chain_spec::niskala::CustomChainSpecProperties>::build()
             ),
+
+        #[cfg(feature = "mandala-native")]
+        "dev" =>
+            Box::new(
+                <NodeChainSpec<Dev> as chain_spec::mandala::CustomChainSpecProperties>::build()
+            ),
+        path => {
+            #[cfg(feature = "mandala-native")]
+            {
+                Box::new(
+                    chain_spec::mandala::ChainSpec::from_json_file(std::path::PathBuf::from(path))?
+                )
+            }
+
+            #[cfg(feature = "niskala-native")]
+            {
+                Box::new(
+                    chain_spec::niskala::ChainSpec::from_json_file(std::path::PathBuf::from(path))?
+                )
+            }
+        }
     })
 }
 
@@ -97,7 +124,15 @@ impl SubstrateCli for Cli {
 
 impl SubstrateCli for RelayChainCli {
     fn impl_name() -> String {
-        "Mandala Collator".into()
+        #[cfg(feature = "niskala-native")]
+        {
+            "Niskala Collator".into()
+        }
+
+        #[cfg(feature = "mandala-native")]
+        {
+            "Mandala Collator".into()
+        }
     }
 
     fn impl_version() -> String {
@@ -156,7 +191,10 @@ impl Cli {
             spec => {
                 return &niskala_runtime::VERSION;
             }
-            #[cfg(not(feature = "niskala-native"))]
+            #[cfg(feature = "mandala-native")]
+            spec => {
+                return &mandala_runtime::VERSION;
+            }
             _ => panic!("invalid chain spec"),
         }
     }
@@ -384,10 +422,20 @@ pub fn run() -> Result<()> {
 
                 let para_id = {
                     #[cfg(feature = "niskala-native")]
-                    chain_spec::niskala::Extensions
-                        ::try_get(&*config.chain_spec)
-                        .map(|e| e.para_id)
-                        .ok_or("Could not find parachain ID in chain-spec.")?
+                    {
+                        chain_spec::niskala::Extensions
+                            ::try_get(&*config.chain_spec)
+                            .map(|e| e.para_id)
+                            .ok_or("Could not find parachain ID in chain-spec.")?
+                    }
+
+                    #[cfg(feature = "mandala-native")]
+                    {
+                        chain_spec::mandala::Extensions
+                            ::try_get(&*config.chain_spec)
+                            .map(|e| e.para_id)
+                            .ok_or("Could not find parachain ID in chain-spec.")?
+                    }
                 };
 
                 let polkadot_cli = RelayChainCli::new(
