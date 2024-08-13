@@ -114,9 +114,9 @@ substrate-build-script-utils = { workspace = true }
 
 [features]
 niskala-native = ["niskala-runtime"]
-mandala-native = []
+mandala-native = ["mandala-runtime"]
 
-default = ["niskala-native"]
+default = []
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",

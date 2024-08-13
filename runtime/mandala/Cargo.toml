@@ -1,7 +1,10 @@
 [package]
 name = "mandala-runtime"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -11,15 +14,11 @@ targets = ["x86_64-unknown-linux-gnu"]
 substrate-wasm-builder = { workspace = true, optional = true }
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
-	"derive",
-] }
-hex-literal = { version = "0.4.1", optional = true }
+codec = { workspace = true }
+hex-literal = { workspace = true, optional = true }
 log = { workspace = true }
-scale-info = { version = "2.10.0", default-features = false, features = [
-	"derive",
-] }
-smallvec = "1.11.0"
+scale-info = { workspace = true }
+smallvec = { workspace = true }
 
 
 # Substrate
@@ -75,10 +74,54 @@ parachains-common = { workspace = true }
 parachain-info = { package = "staging-parachain-info", workspace = true, default-features = false }
 pallet-utility = { workspace = true }
 pallet-multisig = { workspace = true }
+cumulus-primitives-aura = { workspace = true }
+
+
+# EVM
+pallet-evm = { workspace = true }      # ok
+pallet-ethereum = { workspace = true } # ok
+
+fp-account = { workspace = true, features = ["serde"] }        # ok
+fp-evm = { workspace = true, features = ["serde"] }            # ok
+fp-rpc = { workspace = true }                                  # ok
+fp-self-contained = { workspace = true, features = ["serde"] } # ok
+
+pallet-base-fee = { workspace = true }                # ok
+pallet-dynamic-fee = { workspace = true }             # ok
+pallet-evm-chain-id = { workspace = true }            # ok
+pallet-evm-precompile-modexp = { workspace = true }   # ok
+pallet-evm-precompile-sha3fips = { workspace = true } # ok
+pallet-evm-precompile-simple = { workspace = true }   # ok
+
+mandala-primitives = { path = "../../primitives", default-features = false }
+
+# moonbeam-rpc-primitives-debug = { workspace = true }
+# evm-tracing-events = { workspace = true, optional = true }
+# moonbeam-rpc-primitives-txpool = { workspace = true }
+# moonbeam-evm-tracer = { workspace = true, optional = true }
+
 
 [features]
 default = ["std"]
 std = [
+	# "moonbeam-evm-tracer/std",
+	# "moonbeam-rpc-primitives-txpool/std",
+	# "evm-tracing-events/std",
+	# "moonbeam-rpc-primitives-debug/std",
+	"mandala-primitives/std",
+	"pallet-evm-precompile-simple/std",
+	"pallet-evm-precompile-sha3fips/std",
+	"pallet-evm-precompile-modexp/std",
+	"pallet-evm-chain-id/std",
+	"pallet-dynamic-fee/std",
+	"pallet-base-fee/std",
+	"fp-self-contained/std",
+	"fp-rpc/std",
+	"fp-evm/std",
+	"fp-account/std",
+	"cumulus-primitives-aura/std",
+	"pallet-evm/std",
+	"pallet-ethereum/std",
 	"codec/std",
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-parachain-system/std",
@@ -179,3 +222,5 @@ try-runtime = [
 	"polkadot-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
 ]
+
+# evm-tracing = ["evm-tracing-events", "moonbeam-evm-tracer"]

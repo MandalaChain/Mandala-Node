@@ -12,6 +12,7 @@ use mandala_runtime::{ opaque::{ Block, Hash }, RuntimeApi };
 
 #[cfg(feature = "niskala-native")]
 use niskala_runtime::{ opaque::{ Block, Hash }, RuntimeApi };
+
 // Cumulus Imports
 use cumulus_primitives_core::{ relay_chain::{ CollatorPair, ValidationCode }, ParaId };
 use cumulus_client_consensus_aura::collators::lookahead::{ self as aura, Params as AuraParams };
@@ -86,12 +87,20 @@ impl sc_executor::NativeExecutionDispatch for ParachainNativeExecutor {
         {
             niskala_runtime::api::dispatch(method, data)
         }
+        #[cfg(feature = "mandala-native")]
+        {
+            mandala_runtime::api::dispatch(method, data)
+        }
     }
 
     fn native_version() -> sc_executor::NativeVersion {
         #[cfg(feature = "niskala-native")]
         {
             niskala_runtime::native_version()
+        }
+        #[cfg(feature = "mandala-native")]
+        {
+            mandala_runtime::native_version()
         }
     }
 }
@@ -171,7 +180,6 @@ pub fn new_partial(
         .with_max_runtime_instances(config.max_runtime_instances)
         .with_runtime_cache_size(config.runtime_cache_size)
         .build();
-
 
     let (client, backend, keystore_container, task_manager) = sc_service::new_full_parts::<
         Block,
@@ -487,10 +495,12 @@ async fn start_node_impl(
     // for ethereum-compatibility rpc.
     parachain_config.rpc_id_provider = Some(Box::new(fc_rpc::EthereumSubIdProvider));
 
-    let converter = {
-        #[cfg(feature = "niskala-native")]
-        niskala_runtime::TransactionConverter
-    };
+
+    #[cfg(feature = "niskala-native")]
+    let converter = niskala_runtime::TransactionConverter;
+    
+    #[cfg(feature = "mandala-native")]
+    let converter = mandala_runtime::TransactionConverter;
 
     let eth_rpc_params = crate::rpc::EthDeps {
         client: client.clone(),
