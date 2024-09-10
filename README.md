@@ -62,6 +62,25 @@ rustc 1.78.0-nightly (3246e7951 2024-02-19)
 cargo build --release
 ```
 
+### For MacOS Users
+When you see error like this:
+
+```
+cargo:warning=xcrun: error: unable to lookup item 'PlatformVersion' from command line tools installation
+cargo:warning=xcrun: error: unable to lookup item 'PlatformVersion' in SDK '/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk'
+```
+
+The workaround is to set `MACOSX_DEPLOYMENT_TARGET` to your OS version.
+
+For example, to set it to 14.6.1:
+```
+export MACOSX_DEPLOYMENT_TARGET=14.6.1
+```
+
+and then run `cargo build` again. 
+
+Reference: https://github.com/rust-lang/cc-rs/issues/1001
+
 ## Steps
 
 [ x ] Prepare multisig for initial supply
