@@ -14,10 +14,12 @@ validator = true
 name = "bob"
 validator = true
 
-# [[parachains]]
-# id = 2000
-# chain_spec_path = "./dev.json"
+[[parachains]]
+id = 2000
+chain = "{{CHAIN}}"
+cumulus_based = true
+force_decorator = "generic-evm"
 
-# [parachains.collator]
-# name = "mandala-collator-1"
-# command = "mandala"
+[parachains.collator]
+name = "mandala-collator-1"
+command = "mandala"
