@@ -79,6 +79,7 @@ rustup --version
 echo "Configuring Rust toolchain..."
 rustup default stable
 rustup update
+rustup target add wasm32-unknown-unknown
 
 echo "Adding nightly release and WebAssembly target..."
 rustup update nightly
