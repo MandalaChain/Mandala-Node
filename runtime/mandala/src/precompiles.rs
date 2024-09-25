@@ -6,7 +6,7 @@ use pallet_evm::{
     PrecompileSet,
 };
 
-use sp_core::{ ConstU32, H160 };
+use sp_core::{ H160 };
 use sp_std::marker::PhantomData;
 
 use pallet_evm_precompile_modexp::Modexp;

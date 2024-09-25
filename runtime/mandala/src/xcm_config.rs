@@ -20,11 +20,9 @@ use frame_support::{
 use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain_primitives::primitives::Sibling;
-use polkadot_runtime_common::impls::ToAuthor;
 use xcm::latest::prelude::*;
 use xcm_builder::{
     AccountKey20Aliases,
-    AccountId32Aliases,
     AllowExplicitUnpaidExecutionFrom,
     AllowTopLevelPaidExecutionFrom,
     DenyReserveTransferToRelayChain,
@@ -39,8 +37,6 @@ use xcm_builder::{
     RelayChainAsNative,
     SiblingParachainAsNative,
     SiblingParachainConvertsVia,
-    SignedAccountId32AsNative,
-    SignedToAccountId32,
     SovereignSignedViaLocation,
     TakeWeightCredit,
     TrailingSetTopicAsId,
