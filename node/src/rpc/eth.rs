@@ -1,9 +1,8 @@
 use fc_rpc::DebugApiServer;
 use std::{collections::BTreeMap, sync::Arc};
 // TODO : integrate tracing api
-use fc_rpc::{pending::AuraConsensusDataProvider, Debug, RuntimeApiStorageOverride};
+use fc_rpc::{pending::AuraConsensusDataProvider, Debug};
 use fc_rpc_core::EthApiServer;
-use fp_storage::EthereumStorageSchema;
 use jsonrpsee::RpcModule;
 // Substrate
 use sc_client_api::{

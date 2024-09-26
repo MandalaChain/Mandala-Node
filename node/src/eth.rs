@@ -8,12 +8,9 @@ use std::{
 use futures::{future, prelude::*};
 // Substrate
 use sc_client_api::BlockchainEvents;
-use sc_executor::{NativeElseWasmExecutor, NativeExecutionDispatch, WasmExecutor};
 
 use sc_network_sync::SyncingService;
-use sc_service::{
-    error::Error as ServiceError, Configuration, TFullBackend, TFullClient, TaskManager,
-};
+use sc_service::{error::Error as ServiceError, Configuration, TFullBackend, TaskManager};
 use sp_api::ConstructRuntimeApi;
 // Frontier
 pub use fc_consensus::FrontierBlockImport;

@@ -5,33 +5,28 @@ pub mod niskala;
 
 #[cfg(feature = "niskala-native")]
 pub use niskala_runtime::{
-    AccountId, AuraConfig, AuraExtConfig, BalancesConfig, BaseFeeConfig, CollatorSelectionConfig,
-    EVMChainIdConfig, EVMConfig, EthereumConfig, ParachainInfoConfig, PolkadotXcmConfig,
-    RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature, SudoConfig, SystemConfig,
-    EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
+    AccountId, AuraExtConfig, BalancesConfig, BaseFeeConfig, EVMChainIdConfig, EVMConfig,
+    RuntimeGenesisConfig, SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT,
+    UNIT, WASM_BINARY,
 };
 
 #[cfg(feature = "mandala-native")]
 pub use mandala_runtime::{
-    AccountId, AuraConfig, AuraExtConfig, BalancesConfig, BaseFeeConfig, CollatorSelectionConfig,
-    EVMChainIdConfig, EVMConfig, EthereumConfig, ParachainInfoConfig, PolkadotXcmConfig,
-    RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature, SudoConfig, SystemConfig,
-    EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
+    AccountId, AuraExtConfig, BalancesConfig, BaseFeeConfig, EVMChainIdConfig, EVMConfig,
+    RuntimeGenesisConfig, SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT,
+    UNIT, WASM_BINARY,
 };
 
 pub use cumulus_primitives_core::ParaId;
 pub use fp_evm::GenesisAccount;
 pub use sc_chain_spec::{ChainSpecBuilder, ChainSpecExtension, ChainSpecGroup};
 pub use sc_network::config::MultiaddrWithPeerId;
-pub use sc_service::{ChainType, GenericChainSpec, Properties};
+pub use sc_service::{ChainType, Properties};
 pub use sc_telemetry::TelemetryEndpoints;
 pub use serde::{Deserialize, Serialize};
 pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-pub use sp_core::{crypto::Ss58Codec, ecdsa, sr25519, Pair, Public, TypedGet, H160, U256};
-pub use sp_runtime::{
-    traits::{IdentifyAccount, Verify},
-    MultiAddress,
-};
+pub use sp_core::{crypto::Ss58Codec, ecdsa, Pair, Public, H160, U256};
+pub use sp_runtime::traits::Verify;
 pub use std::{collections::BTreeMap, marker::PhantomData};
 
 #[macro_export(local_inner_macros)]
@@ -97,7 +92,7 @@ pub trait CustomChainSpecProperties {
     fn parachain_id() -> u32;
 
     /// extension for custom properties, override this if you have some custom chain spec properties
-    fn chain_spec_properties_ext(mut chainspec_prop: Properties) -> Properties {
+    fn chain_spec_properties_ext(chainspec_prop: Properties) -> Properties {
         chainspec_prop
     }
 
@@ -112,7 +107,7 @@ pub trait CustomChainSpecProperties {
     }
 
     fn chain_spec_prop() -> Properties {
-        let mut default = Self::default_chain_spec_properties();
+        let default = Self::default_chain_spec_properties();
         Self::chain_spec_properties_ext(default)
     }
 
