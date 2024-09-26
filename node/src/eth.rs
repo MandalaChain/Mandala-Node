@@ -1,24 +1,25 @@
-use std::{ collections::BTreeMap, path::PathBuf, sync::{ Arc, Mutex }, time::Duration };
+use std::{
+    collections::BTreeMap,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
-use futures::{ future, prelude::* };
+use futures::{future, prelude::*};
 // Substrate
 use sc_client_api::BlockchainEvents;
-use sc_executor::{ NativeElseWasmExecutor, NativeExecutionDispatch, WasmExecutor };
+use sc_executor::{NativeElseWasmExecutor, NativeExecutionDispatch, WasmExecutor};
 
 use sc_network_sync::SyncingService;
 use sc_service::{
-    error::Error as ServiceError,
-    Configuration,
-    TFullBackend,
-    TFullClient,
-    TaskManager,
+    error::Error as ServiceError, Configuration, TFullBackend, TFullClient, TaskManager,
 };
 use sp_api::ConstructRuntimeApi;
 // Frontier
 pub use fc_consensus::FrontierBlockImport;
-use fc_mapping_sync::{ kv::MappingSyncWorker, SyncStrategy };
-use fc_rpc::{ EthTask, StorageOverride };
-pub use fc_rpc_core::types::{ FeeHistoryCache, FeeHistoryCacheLimit, FilterPool };
+use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
+use fc_rpc::{EthTask, StorageOverride};
+pub use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 // Local
 #[cfg(feature = "niskala-native")]
 use niskala_runtime::opaque::Block;
@@ -103,7 +104,7 @@ pub struct FrontierPartialComponents {
 }
 
 pub fn new_frontier_partial(
-    config: &EthConfiguration
+    config: &EthConfiguration,
 ) -> Result<FrontierPartialComponents, ServiceError> {
     Ok(FrontierPartialComponents {
         filter_pool: Some(Arc::new(Mutex::new(BTreeMap::new()))),
@@ -113,16 +114,19 @@ pub fn new_frontier_partial(
 }
 
 /// A set of APIs that ethereum-compatible runtimes must implement.
-pub trait EthCompatRuntimeApiCollection: sp_api::ApiExt<Block> +
-    fp_rpc::EthereumRuntimeRPCApi<Block> +
-    fp_rpc::ConvertTransactionRuntimeApi<Block> {}
+pub trait EthCompatRuntimeApiCollection:
+    sp_api::ApiExt<Block>
+    + fp_rpc::EthereumRuntimeRPCApi<Block>
+    + fp_rpc::ConvertTransactionRuntimeApi<Block>
+{
+}
 
-impl<Api> EthCompatRuntimeApiCollection
-    for Api
-    where
-        Api: sp_api::ApiExt<Block> +
-            fp_rpc::EthereumRuntimeRPCApi<Block> +
-            fp_rpc::ConvertTransactionRuntimeApi<Block> {}
+impl<Api> EthCompatRuntimeApiCollection for Api where
+    Api: sp_api::ApiExt<Block>
+        + fp_rpc::EthereumRuntimeRPCApi<Block>
+        + fp_rpc::ConvertTransactionRuntimeApi<Block>
+{
+}
 
 pub async fn spawn_frontier_tasks<RuntimeApi>(
     task_manager: &TaskManager,
@@ -134,12 +138,15 @@ pub async fn spawn_frontier_tasks<RuntimeApi>(
     fee_history_cache: FeeHistoryCache,
     fee_history_cache_limit: FeeHistoryCacheLimit,
     sync: Arc<SyncingService<Block>>,
-    pubsub_notification_sinks: Arc<fc_mapping_sync::EthereumBlockNotificationSinks<fc_mapping_sync::EthereumBlockNotification<Block>>>
-)
-    where
-        RuntimeApi: ConstructRuntimeApi<Block, crate::service::ParachainClient>,
-        RuntimeApi: Send + Sync + 'static,
-        RuntimeApi::RuntimeApi: EthCompatRuntimeApiCollection
+    pubsub_notification_sinks: Arc<
+        fc_mapping_sync::EthereumBlockNotificationSinks<
+            fc_mapping_sync::EthereumBlockNotification<Block>,
+        >,
+    >,
+) where
+    RuntimeApi: ConstructRuntimeApi<Block, crate::service::ParachainClient>,
+    RuntimeApi: Send + Sync + 'static,
+    RuntimeApi::RuntimeApi: EthCompatRuntimeApiCollection,
 {
     // Spawn main mapping sync worker background task.
 
@@ -160,8 +167,9 @@ pub async fn spawn_frontier_tasks<RuntimeApi>(
                     0,
                     SyncStrategy::Parachain,
                     sync,
-                    pubsub_notification_sinks
-                ).for_each(|()| future::ready(()))
+                    pubsub_notification_sinks,
+                )
+                .for_each(|()| future::ready(())),
             );
         }
         fc_db::Backend::Sql(b) => {
@@ -179,8 +187,8 @@ pub async fn spawn_frontier_tasks<RuntimeApi>(
                     },
                     fc_mapping_sync::SyncStrategy::Parachain,
                     sync,
-                    pubsub_notification_sinks
-                )
+                    pubsub_notification_sinks,
+                ),
             );
         }
     }
@@ -189,21 +197,22 @@ pub async fn spawn_frontier_tasks<RuntimeApi>(
     if let Some(filter_pool) = filter_pool {
         // Each filter is allowed to stay in the pool for 100 blocks.
         const FILTER_RETAIN_THRESHOLD: u64 = 100;
-        task_manager
-            .spawn_essential_handle()
-            .spawn(
-                "frontier-filter-pool",
-                Some("frontier"),
-                EthTask::filter_pool_task(client.clone(), filter_pool, FILTER_RETAIN_THRESHOLD)
-            );
+        task_manager.spawn_essential_handle().spawn(
+            "frontier-filter-pool",
+            Some("frontier"),
+            EthTask::filter_pool_task(client.clone(), filter_pool, FILTER_RETAIN_THRESHOLD),
+        );
     }
 
     // Spawn Frontier FeeHistory cache maintenance task.
-    task_manager
-        .spawn_essential_handle()
-        .spawn(
-            "frontier-fee-history",
-            Some("frontier"),
-            EthTask::fee_history_task(client, overrides, fee_history_cache, fee_history_cache_limit)
-        );
+    task_manager.spawn_essential_handle().spawn(
+        "frontier-fee-history",
+        Some("frontier"),
+        EthTask::fee_history_task(
+            client,
+            overrides,
+            fee_history_cache,
+            fee_history_cache_limit,
+        ),
+    );
 }

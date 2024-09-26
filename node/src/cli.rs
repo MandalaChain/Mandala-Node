@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use crate::eth::EthConfiguration;
+use std::path::PathBuf;
 
 /// Sub-commands supported by the collator.
 #[derive(Debug, clap::Subcommand)]
@@ -34,7 +34,7 @@ pub enum Subcommand {
     /// Head data is the encoded block header.
     #[command(alias = "export-genesis-state")]
     ExportGenesisHead(cumulus_client_cli::ExportGenesisHeadCommand),
-    
+
     /// Export the genesis wasm of the parachain.
     ExportGenesisWasm(cumulus_client_cli::ExportGenesisWasmCommand),
 
@@ -42,7 +42,6 @@ pub enum Subcommand {
     /// The pallet benchmarking moved to the `pallet` sub-command.
     #[command(subcommand)]
     Benchmark(frame_benchmarking_cli::BenchmarkCmd),
-
 
     /// Try-runtime has migrated to a standalone
     /// [CLI](<https://github.com/paritytech/try-runtime-cli>). The subcommand exists as a stub and
@@ -112,7 +111,7 @@ impl RelayChainCli {
     /// Parse the relay chain CLI parameters using the para chain `Configuration`.
     pub fn new<'a>(
         para_config: &sc_service::Configuration,
-        relay_chain_args: impl Iterator<Item = &'a String>
+        relay_chain_args: impl Iterator<Item = &'a String>,
     ) -> Self {
         let extension = {
             #[cfg(feature = "niskala-native")]
@@ -127,6 +126,10 @@ impl RelayChainCli {
         };
         let chain_id = extension.map(|e| e.relay_chain.clone());
         let base_path = Some(para_config.base_path.path().join("polkadot"));
-        Self { base_path, chain_id, base: clap::Parser::parse_from(relay_chain_args) }
+        Self {
+            base_path,
+            chain_id,
+            base: clap::Parser::parse_from(relay_chain_args),
+        }
     }
 }

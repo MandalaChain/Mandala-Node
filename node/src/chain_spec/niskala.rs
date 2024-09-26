@@ -83,7 +83,7 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
             // collator 1
             authority_keys_from_public("5HMa8oTYwr5viSwQBSbWgM7vxxiCcgLUgSbcumExjEyJ8sTr"),
             // collator 2
-            authority_keys_from_public("5HTaZj7BtHFN5NsK5CYcK99ZPmH8ESz78hybbjmftKsCKyn1")
+            authority_keys_from_public("5HTaZj7BtHFN5NsK5CYcK99ZPmH8ESz78hybbjmftKsCKyn1"),
         ]
     }
 
@@ -106,7 +106,7 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
             // team
             account_id!("cf34cEfE42aB033Db814639f72EA37baD3e82219"),
             // foundation
-            account_id!("e6D8A2F367250bc677a3D566E3Aeb526697C7399")
+            account_id!("e6D8A2F367250bc677a3D566E3Aeb526697C7399"),
         ]
     }
 
@@ -130,6 +130,3 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
     }
 }
 // ----------------------------------------- End   dev chainspec custom -----------------------------------------
-
-
-

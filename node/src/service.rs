@@ -1,65 +1,59 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 // std
-use std::{ sync::Arc, time::Duration };
+use std::{sync::Arc, time::Duration};
 
 use cumulus_client_cli::CollatorOptions;
-use fc_rpc::{ StorageOverride, StorageOverrideHandler };
+use fc_rpc::{StorageOverride, StorageOverrideHandler};
 use futures::FutureExt;
 // Local Runtime Types
 #[cfg(feature = "mandala-native")]
-use mandala_runtime::{ opaque::{ Block, Hash }, RuntimeApi };
+use mandala_runtime::{
+    opaque::{Block, Hash},
+    RuntimeApi,
+};
 
 #[cfg(feature = "niskala-native")]
-use niskala_runtime::{ opaque::{ Block, Hash }, RuntimeApi };
+use niskala_runtime::{
+    opaque::{Block, Hash},
+    RuntimeApi,
+};
 
 // Cumulus Imports
-use cumulus_primitives_core::{ relay_chain::{ CollatorPair, ValidationCode }, ParaId };
-use cumulus_client_consensus_aura::collators::lookahead::{ self as aura, Params as AuraParams };
 use cumulus_client_collator::service::CollatorService;
+use cumulus_client_consensus_aura::collators::lookahead::{self as aura, Params as AuraParams};
+use cumulus_client_consensus_aura::slot_duration;
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
 use cumulus_client_consensus_proposer::Proposer;
 use cumulus_client_service::{
-    build_network,
-    build_relay_chain_interface,
-    prepare_node_config,
-    start_relay_chain_tasks,
-    BuildNetworkParams,
-    CollatorSybilResistance,
-    DARecoveryProfile,
-    StartRelayChainTasksParams,
+    build_network, build_relay_chain_interface, prepare_node_config, start_relay_chain_tasks,
+    BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartRelayChainTasksParams,
 };
-use cumulus_relay_chain_interface::{ OverseerHandle, RelayChainInterface };
-use cumulus_client_consensus_aura::slot_duration;
+use cumulus_primitives_core::{
+    relay_chain::{CollatorPair, ValidationCode},
+    ParaId,
+};
+use cumulus_relay_chain_interface::{OverseerHandle, RelayChainInterface};
 
 // Substrate Imports
 use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 use sc_client_api::Backend;
 use sc_consensus::ImportQueue;
 use sc_executor::{
-    HeapAllocStrategy,
-    NativeElseWasmExecutor,
-    WasmExecutor,
-    DEFAULT_HEAP_ALLOC_STRATEGY,
+    HeapAllocStrategy, NativeElseWasmExecutor, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY,
 };
-use sc_network::{ config, NetworkBlock };
+use sc_network::{config, NetworkBlock};
 use sc_network_sync::SyncingService;
-use sc_service::{ Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager };
-use sc_telemetry::{ Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle };
+use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
+use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_keystore::KeystorePtr;
 use substrate_prometheus_endpoint::Registry;
 
 // Frontier
 use crate::eth::{
-    db_config_dir,
-    new_frontier_partial,
-    spawn_frontier_tasks,
-    BackendType,
-    EthConfiguration,
-    FrontierBackend,
-    FrontierBlockImport as TFrontierBlockImport,
-    FrontierPartialComponents,
+    db_config_dir, new_frontier_partial, spawn_frontier_tasks, BackendType, EthConfiguration,
+    FrontierBackend, FrontierBlockImport as TFrontierBlockImport, FrontierPartialComponents,
 };
 
 // Native executor type.
@@ -108,14 +102,25 @@ impl sc_executor::NativeExecutionDispatch for ParachainNativeExecutor {
 // workaround for rocksdb since currently doesnt work nicely with txpool
 fn prevent_rocks_db(config: &mut Configuration) {
     match &config.database {
-        fc_db::DatabaseSource::Auto { paritydb_path, rocksdb_path, cache_size } => {
-            config.database = fc_db::DatabaseSource::ParityDb { path: paritydb_path.to_owned() };
+        fc_db::DatabaseSource::Auto {
+            paritydb_path,
+            rocksdb_path,
+            cache_size,
+        } => {
+            config.database = fc_db::DatabaseSource::ParityDb {
+                path: paritydb_path.to_owned(),
+            };
         }
         fc_db::DatabaseSource::RocksDb { path, cache_size } => {
-            config.database = fc_db::DatabaseSource::ParityDb { path: path.to_owned() };
+            config.database = fc_db::DatabaseSource::ParityDb {
+                path: path.to_owned(),
+            };
         }
         fc_db::DatabaseSource::ParityDb { path } => (),
-        fc_db::DatabaseSource::Custom { db, require_create_flag } => (),
+        fc_db::DatabaseSource::Custom {
+            db,
+            require_create_flag,
+        } => (),
     }
 }
 
@@ -136,7 +141,7 @@ type FrontierBlockImport = TFrontierBlockImport<Block, Arc<ParachainClient>, Par
 #[allow(clippy::type_complexity)]
 pub fn new_partial(
     config: &mut Configuration,
-    eth_config: &EthConfiguration
+    eth_config: &EthConfiguration,
 ) -> Result<
     PartialComponents<
         ParachainClient,
@@ -150,28 +155,28 @@ pub fn new_partial(
             Option<TelemetryWorkerHandle>,
             Arc<fc_db::Backend<Block, ParachainClient>>,
             Arc<dyn StorageOverride<Block>>,
-        )
+        ),
     >,
-    sc_service::Error
+    sc_service::Error,
 > {
     prevent_rocks_db(config);
 
-    let telemetry = config.telemetry_endpoints
+    let telemetry = config
+        .telemetry_endpoints
         .clone()
         .filter(|x| !x.is_empty())
-        .map(
-            |endpoints| -> Result<_, sc_telemetry::Error> {
-                let worker = TelemetryWorker::new(16)?;
-                let telemetry = worker.handle().new_telemetry(endpoints);
-                Ok((worker, telemetry))
-            }
-        )
+        .map(|endpoints| -> Result<_, sc_telemetry::Error> {
+            let worker = TelemetryWorker::new(16)?;
+            let telemetry = worker.handle().new_telemetry(endpoints);
+            Ok((worker, telemetry))
+        })
         .transpose()?;
 
-    let heap_pages = config.default_heap_pages.map_or(
-        DEFAULT_HEAP_ALLOC_STRATEGY,
-        |h| HeapAllocStrategy::Static { extra_pages: h as _ }
-    );
+    let heap_pages = config
+        .default_heap_pages
+        .map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
+            extra_pages: h as _,
+        });
 
     let executor = WasmExecutor::builder()
         .with_execution_method(config.wasm_method)
@@ -181,21 +186,20 @@ pub fn new_partial(
         .with_runtime_cache_size(config.runtime_cache_size)
         .build();
 
-    let (client, backend, keystore_container, task_manager) = sc_service::new_full_parts::<
-        Block,
-        RuntimeApi,
-        _
-    >(
-        config,
-        telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
-        executor
-    )?;
+    let (client, backend, keystore_container, task_manager) =
+        sc_service::new_full_parts::<Block, RuntimeApi, _>(
+            config,
+            telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
+            executor,
+        )?;
     let client = Arc::new(client);
 
     let telemetry_worker_handle = telemetry.as_ref().map(|(worker, _)| worker.handle());
 
     let telemetry = telemetry.map(|(worker, telemetry)| {
-        task_manager.spawn_handle().spawn("telemetry", None, worker.run());
+        task_manager
+            .spawn_handle()
+            .spawn("telemetry", None, worker.run());
         telemetry
     });
 
@@ -204,53 +208,44 @@ pub fn new_partial(
         config.role.is_authority().into(),
         config.prometheus_registry(),
         task_manager.spawn_essential_handle(),
-        client.clone()
+        client.clone(),
     );
 
     let overrides = Arc::new(StorageOverrideHandler::new(client.clone()));
-    let frontier_backend = (
-        match eth_config.frontier_backend_type {
-            BackendType::KeyValue => {
-                let b = Arc::new(
-                    fc_db::kv::Backend::open(
-                        Arc::clone(&client),
-                        &config.database,
-                        &db_config_dir(config)
-                    )?
-                );
+    let frontier_backend = (match eth_config.frontier_backend_type {
+        BackendType::KeyValue => {
+            let b = Arc::new(fc_db::kv::Backend::open(
+                Arc::clone(&client),
+                &config.database,
+                &db_config_dir(config),
+            )?);
 
-                FrontierBackend::KeyValue(b)
-            }
-            BackendType::Sql => {
-                let db_path = db_config_dir(config).join("sql");
-                std::fs::create_dir_all(&db_path).expect("failed creating sql db directory");
-                let backend = futures::executor
-                    ::block_on(
-                        fc_db::sql::Backend::new(
-                            fc_db::sql::BackendConfig::Sqlite(fc_db::sql::SqliteBackendConfig {
-                                path: std::path::Path
-                                    ::new("sqlite:///")
-                                    .join(db_path)
-                                    .join("frontier.db3")
-                                    .to_str()
-                                    .unwrap(),
-                                create_if_missing: true,
-                                thread_count: eth_config.frontier_sql_backend_thread_count,
-                                cache_size: eth_config.frontier_sql_backend_cache_size,
-                            }),
-                            eth_config.frontier_sql_backend_pool_size,
-                            std::num::NonZeroU32::new(
-                                eth_config.frontier_sql_backend_num_ops_timeout
-                            ),
-                            overrides.clone()
-                        )
-                    )
-                    .unwrap_or_else(|err| panic!("failed creating sql backend: {:?}", err))
-                    .into();
-                FrontierBackend::Sql(backend)
-            }
+            FrontierBackend::KeyValue(b)
         }
-    ).into();
+        BackendType::Sql => {
+            let db_path = db_config_dir(config).join("sql");
+            std::fs::create_dir_all(&db_path).expect("failed creating sql db directory");
+            let backend = futures::executor::block_on(fc_db::sql::Backend::new(
+                fc_db::sql::BackendConfig::Sqlite(fc_db::sql::SqliteBackendConfig {
+                    path: std::path::Path::new("sqlite:///")
+                        .join(db_path)
+                        .join("frontier.db3")
+                        .to_str()
+                        .unwrap(),
+                    create_if_missing: true,
+                    thread_count: eth_config.frontier_sql_backend_thread_count,
+                    cache_size: eth_config.frontier_sql_backend_cache_size,
+                }),
+                eth_config.frontier_sql_backend_pool_size,
+                std::num::NonZeroU32::new(eth_config.frontier_sql_backend_num_ops_timeout),
+                overrides.clone(),
+            ))
+            .unwrap_or_else(|err| panic!("failed creating sql backend: {:?}", err))
+            .into();
+            FrontierBackend::Sql(backend)
+        }
+    })
+    .into();
 
     let frontier_block_import = FrontierBlockImport::new(client.clone(), client.clone());
 
@@ -262,7 +257,7 @@ pub fn new_partial(
         config,
         eth_config,
         telemetry.as_ref().map(|telemetry| telemetry.handle()),
-        &task_manager
+        &task_manager,
     )?;
 
     Ok(PartialComponents {
@@ -290,7 +285,7 @@ fn build_import_queue(
     config: &Configuration,
     eth_config: &EthConfiguration,
     telemetry: Option<TelemetryHandle>,
-    task_manager: &TaskManager
+    task_manager: &TaskManager,
 ) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
     let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
     let target_gas_price = eth_config.target_gas_price;
@@ -306,15 +301,15 @@ fn build_import_queue(
             _,
             _,
             _,
-            _
+            _,
         >(
             client,
             block_import,
             create_inherent_data_providers,
             &task_manager.spawn_essential_handle(),
             config.prometheus_registry(),
-            telemetry
-        )
+            telemetry,
+        ),
     )
 }
 
@@ -333,11 +328,10 @@ fn start_consensus(
     para_id: ParaId,
     collator_key: CollatorPair,
     overseer_handle: OverseerHandle,
-    announce_block: Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>
+    announce_block: Arc<dyn Fn(Hash, Option<Vec<u8>>) + Send + Sync>,
 ) -> Result<(), sc_service::Error> {
     use cumulus_client_consensus_aura::collators::basic::{
-        self as basic_aura,
-        Params as BasicAuraParams,
+        self as basic_aura, Params as BasicAuraParams,
     };
 
     // NOTE: because we use Aura here explicitly, we can use `CollatorSybilResistance::Resistant`
@@ -350,7 +344,7 @@ fn start_consensus(
         client.clone(),
         transaction_pool,
         prometheus_registry,
-        telemetry.clone()
+        telemetry.clone(),
     );
 
     let proposer = Proposer::new(proposer_factory);
@@ -359,7 +353,7 @@ fn start_consensus(
         client.clone(),
         Arc::new(task_manager.spawn_handle()),
         announce_block,
-        client.clone()
+        client.clone(),
     );
 
     let params = AuraParams {
@@ -386,20 +380,13 @@ fn start_consensus(
         reinitialize: false,
     };
 
-    let fut = aura::run::<
-        Block,
-        sp_consensus_aura::sr25519::AuthorityPair,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _
-    >(params);
-    task_manager.spawn_essential_handle().spawn("aura", None, fut);
+    let fut =
+        aura::run::<Block, sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _, _, _, _>(
+            params,
+        );
+    task_manager
+        .spawn_essential_handle()
+        .spawn("aura", None, fut);
 
     Ok(())
 }
@@ -413,7 +400,7 @@ async fn start_node_impl(
     eth_config: EthConfiguration,
     collator_options: CollatorOptions,
     para_id: ParaId,
-    hwbench: Option<sc_sysinfo::HwBench>
+    hwbench: Option<sc_sysinfo::HwBench>,
 ) -> sc_service::error::Result<(TaskManager, Arc<ParachainClient>)> {
     let mut parachain_config = prepare_node_config(parachain_config);
 
@@ -428,8 +415,11 @@ async fn start_node_impl(
         ..
     } = new_partial(&mut parachain_config, &eth_config)?;
 
-    let FrontierPartialComponents { filter_pool, fee_history_cache, fee_history_cache_limit } =
-        new_frontier_partial(&eth_config)?;
+    let FrontierPartialComponents {
+        filter_pool,
+        fee_history_cache,
+        fee_history_cache_limit,
+    } = new_frontier_partial(&eth_config)?;
 
     let (relay_chain_interface, collator_key) = build_relay_chain_interface(
         polkadot_config,
@@ -437,17 +427,18 @@ async fn start_node_impl(
         telemetry_worker_handle,
         &mut task_manager,
         collator_options.clone(),
-        hwbench.clone()
-    ).await.map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
+        hwbench.clone(),
+    )
+    .await
+    .map_err(|e| sc_service::Error::Application(Box::new(e) as Box<_>))?;
 
     let validator = parachain_config.role.is_authority();
     let prometheus_registry = parachain_config.prometheus_registry().cloned();
     let import_queue_service = import_queue.service();
-    let net_config = sc_network::config::FullNetworkConfiguration::<
-        _,
-        _,
-        sc_network::NetworkWorker<_, _>
-    >::new(&parachain_config.network);
+    let net_config =
+        sc_network::config::FullNetworkConfiguration::<_, _, sc_network::NetworkWorker<_, _>>::new(
+            &parachain_config.network,
+        );
 
     let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
         build_network(BuildNetworkParams {
@@ -460,27 +451,27 @@ async fn start_node_impl(
             relay_chain_interface: relay_chain_interface.clone(),
             import_queue,
             sybil_resistance_level: CollatorSybilResistance::Resistant, // because of Aura
-        }).await?;
+        })
+        .await?;
 
     if parachain_config.offchain_worker.enabled {
         task_manager.spawn_handle().spawn(
             "offchain-workers-runner",
             "offchain-worker",
-            sc_offchain::OffchainWorkers
-                ::new(sc_offchain::OffchainWorkerOptions {
-                    runtime_api_provider: client.clone(),
-                    is_validator: parachain_config.role.is_authority(),
-                    keystore: Some(keystore_container.keystore()),
-                    offchain_db: backend.offchain_storage(),
-                    transaction_pool: Some(
-                        OffchainTransactionPoolFactory::new(transaction_pool.clone())
-                    ),
-                    network_provider: Arc::new(network.clone()),
-                    enable_http_requests: true,
-                    custom_extensions: |_| vec![],
-                })
-                .run(client.clone(), task_manager.spawn_handle())
-                .boxed()
+            sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
+                runtime_api_provider: client.clone(),
+                is_validator: parachain_config.role.is_authority(),
+                keystore: Some(keystore_container.keystore()),
+                offchain_db: backend.offchain_storage(),
+                transaction_pool: Some(OffchainTransactionPoolFactory::new(
+                    transaction_pool.clone(),
+                )),
+                network_provider: Arc::new(network.clone()),
+                enable_http_requests: true,
+                custom_extensions: |_| vec![],
+            })
+            .run(client.clone(), task_manager.spawn_handle())
+            .boxed(),
         );
     }
 
@@ -488,17 +479,18 @@ async fn start_node_impl(
     // Everytime a new subscription is created, a new mpsc channel is added to the sink pool.
     // The MappingSyncWorker sends through the channel on block import and the subscription emits a notification to the subscriber on receiving a message through this channel.
     // This way we avoid race conditions when using native substrate block import notification stream.
-    let pubsub_notification_sinks: fc_mapping_sync::EthereumBlockNotificationSinks<fc_mapping_sync::EthereumBlockNotification<Block>> = Default::default();
+    let pubsub_notification_sinks: fc_mapping_sync::EthereumBlockNotificationSinks<
+        fc_mapping_sync::EthereumBlockNotification<Block>,
+    > = Default::default();
     let pubsub_notification_sinks = Arc::new(pubsub_notification_sinks);
     let target_gas_price = eth_config.target_gas_price;
 
     // for ethereum-compatibility rpc.
     parachain_config.rpc_id_provider = Some(Box::new(fc_rpc::EthereumSubIdProvider));
 
-
     #[cfg(feature = "niskala-native")]
     let converter = niskala_runtime::TransactionConverter;
-    
+
     #[cfg(feature = "mandala-native")]
     let converter = mandala_runtime::TransactionConverter;
 
@@ -516,15 +508,13 @@ async fn start_node_impl(
             fc_db::Backend::Sql(b) => b.clone(),
         },
         overrides: overrides.clone(),
-        block_data_cache: Arc::new(
-            fc_rpc::EthBlockDataCacheTask::new(
-                task_manager.spawn_handle(),
-                overrides.clone(),
-                eth_config.eth_log_block_cache,
-                eth_config.eth_statuses_cache,
-                prometheus_registry.clone()
-            )
-        ),
+        block_data_cache: Arc::new(fc_rpc::EthBlockDataCacheTask::new(
+            task_manager.spawn_handle(),
+            overrides.clone(),
+            eth_config.eth_log_block_cache,
+            eth_config.eth_statuses_cache,
+            prometheus_registry.clone(),
+        )),
         filter_pool: filter_pool.clone(),
         max_past_logs: eth_config.max_past_logs,
         fee_history_cache: fee_history_cache.clone(),
@@ -551,9 +541,12 @@ async fn start_node_impl(
                 eth: eth_rpc_params.clone(),
             };
 
-            crate::rpc
-                ::create_full(deps, subscription_task_executor, pubsub_notification_sinks.clone())
-                .map_err(Into::into)
+            crate::rpc::create_full(
+                deps,
+                subscription_task_executor,
+                pubsub_notification_sinks.clone(),
+            )
+            .map_err(Into::into)
         })
     };
 
@@ -582,15 +575,20 @@ async fn start_node_impl(
         fee_history_cache,
         fee_history_cache_limit,
         sync_service.clone(),
-        pubsub_notification_sinks
-    ).await;
+        pubsub_notification_sinks,
+    )
+    .await;
 
     if let Some(hwbench) = hwbench {
         sc_sysinfo::print_hwbench(&hwbench);
         // Here you can check whether the hardware meets your chains' requirements. Putting a link
         // in there and swapping out the requirements for your own are probably a good idea. The
         // requirements for a para-chain are dictated by its relay-chain.
-        if SUBSTRATE_REFERENCE_HARDWARE.check_hardware(&hwbench).is_err() && validator {
+        if SUBSTRATE_REFERENCE_HARDWARE
+            .check_hardware(&hwbench)
+            .is_err()
+            && validator
+        {
             log::warn!(
                 "⚠️  The hardware does not meet the minimal requirements for role 'Authority'."
             );
@@ -598,13 +596,11 @@ async fn start_node_impl(
 
         if let Some(ref mut telemetry) = telemetry {
             let telemetry_handle = telemetry.handle();
-            task_manager
-                .spawn_handle()
-                .spawn(
-                    "telemetry_hwbench",
-                    None,
-                    sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench)
-                );
+            task_manager.spawn_handle().spawn(
+                "telemetry_hwbench",
+                None,
+                sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench),
+            );
         }
     }
 
@@ -652,7 +648,7 @@ async fn start_node_impl(
             para_id,
             collator_key.expect("Command line arguments do not allow this. qed"),
             overseer_handle,
-            announce_block
+            announce_block,
         )?;
     }
 
@@ -668,7 +664,7 @@ pub async fn start_parachain_node(
     eth_config: EthConfiguration,
     collator_options: CollatorOptions,
     para_id: ParaId,
-    hwbench: Option<sc_sysinfo::HwBench>
+    hwbench: Option<sc_sysinfo::HwBench>,
 ) -> sc_service::error::Result<(TaskManager, Arc<ParachainClient>)> {
     start_node_impl(
         parachain_config,
@@ -676,6 +672,7 @@ pub async fn start_parachain_node(
         eth_config,
         collator_options,
         para_id,
-        hwbench
-    ).await
+        hwbench,
+    )
+    .await
 }

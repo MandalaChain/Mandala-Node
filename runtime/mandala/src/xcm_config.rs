@@ -1,20 +1,10 @@
 use super::{
-    AccountId,
-    AllPalletsWithSystem,
-    Balances,
-    ParachainInfo,
-    ParachainSystem,
-    PolkadotXcm,
-    Runtime,
-    RuntimeCall,
-    RuntimeEvent,
-    RuntimeOrigin,
-    WeightToFee,
-    XcmpQueue,
+    AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
+    Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 use frame_support::{
     parameter_types,
-    traits::{ ConstU32, Contains, Everything, Nothing },
+    traits::{ConstU32, Contains, Everything, Nothing},
     weights::Weight,
 };
 use frame_system::EnsureRoot;
@@ -22,36 +12,20 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain_primitives::primitives::Sibling;
 use xcm::latest::prelude::*;
 use xcm_builder::{
-    AccountKey20Aliases,
-    AllowExplicitUnpaidExecutionFrom,
-    AllowTopLevelPaidExecutionFrom,
-    DenyReserveTransferToRelayChain,
-    DenyThenTry,
-    EnsureXcmOrigin,
-    FixedWeightBounds,
-    FrameTransactionalProcessor,
-    FungibleAdapter,
-    IsConcrete,
-    NativeAsset,
-    ParentIsPreset,
-    RelayChainAsNative,
-    SiblingParachainAsNative,
-    SiblingParachainConvertsVia,
-    SovereignSignedViaLocation,
-    TakeWeightCredit,
-    TrailingSetTopicAsId,
-    UsingComponents,
-    WithComputedOrigin,
-    WithUniqueTopic,
-    SignedAccountKey20AsNative,
+    AccountKey20Aliases, AllowExplicitUnpaidExecutionFrom, AllowTopLevelPaidExecutionFrom,
+    DenyReserveTransferToRelayChain, DenyThenTry, EnsureXcmOrigin, FixedWeightBounds,
+    FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, ParentIsPreset,
+    RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
+    SignedAccountKey20AsNative, SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId,
+    UsingComponents, WithComputedOrigin, WithUniqueTopic,
 };
 use xcm_executor::XcmExecutor;
 
 parameter_types! {
-	pub const RelayLocation: Location = Location::parent();
-	pub const RelayNetwork: NetworkId = NetworkId::Rococo;
-	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
-	pub UniversalLocation: InteriorLocation = Parachain(ParachainInfo::parachain_id().into()).into();
+    pub const RelayLocation: Location = Location::parent();
+    pub const RelayNetwork: NetworkId = NetworkId::Rococo;
+    pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
+    pub UniversalLocation: InteriorLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 }
 
 /// Type for specifying how a `Location` can be converted into an `AccountId`. This is used
@@ -77,7 +51,7 @@ pub type LocalAssetTransactor = FungibleAdapter<
     // Our chain's account ID type (we can't get away without mentioning it explicitly):
     AccountId,
     // We don't track any teleports.
-    ()
+    (),
 >;
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
@@ -102,16 +76,26 @@ pub type XcmOriginToTransactDispatchOrigin = (
 );
 
 parameter_types! {
-	// One XCM operation is 1_000_000_000 weight - almost certainly a conservative estimate.
-	pub UnitWeightCost: Weight = Weight::from_parts(1_000_000_000, 64 * 1024);
-	pub const MaxInstructions: u32 = 100;
-	pub const MaxAssetsIntoHolding: u32 = 64;
+    // One XCM operation is 1_000_000_000 weight - almost certainly a conservative estimate.
+    pub UnitWeightCost: Weight = Weight::from_parts(1_000_000_000, 64 * 1024);
+    pub const MaxInstructions: u32 = 100;
+    pub const MaxAssetsIntoHolding: u32 = 64;
 }
 
 pub struct ParentOrParentsExecutivePlurality;
 impl Contains<Location> for ParentOrParentsExecutivePlurality {
     fn contains(location: &Location) -> bool {
-        matches!(location.unpack(), (1, []) | (1, [Plurality { id: BodyId::Executive, .. }]))
+        matches!(
+            location.unpack(),
+            (1, [])
+                | (
+                    1,
+                    [Plurality {
+                        id: BodyId::Executive,
+                        ..
+                    }]
+                )
+        )
     }
 }
 
@@ -127,10 +111,10 @@ pub type Barrier = TrailingSetTopicAsId<
                     // ^^^ Parent and its exec plurality get free execution
                 ),
                 UniversalLocation,
-                ConstU32<8>
+                ConstU32<8>,
             >,
-        )
-    >
+        ),
+    >,
 >;
 
 pub struct XcmConfig;
@@ -153,7 +137,7 @@ impl xcm_executor::Config for XcmConfig {
         RelayLocation,
         AccountId,
         Balances,
-        mandala_primitives::xcm::DealWithFees<Runtime>
+        mandala_primitives::xcm::DealWithFees<Runtime>,
     >;
     type ResponseHandler = PolkadotXcm;
     type AssetTrap = PolkadotXcm;
@@ -173,22 +157,17 @@ impl xcm_executor::Config for XcmConfig {
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
-pub type LocalOriginToLocation = mandala_primitives::xcm::SignedToAccountId20<
-    RuntimeOrigin,
-    AccountId,
-    RelayNetwork
->;
+pub type LocalOriginToLocation =
+    mandala_primitives::xcm::SignedToAccountId20<RuntimeOrigin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution into the right message
 /// queues.
-pub type XcmRouter = WithUniqueTopic<
-    (
-        // Two routers - use UMP to communicate with the relay chain:
-        cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
-        // ..and XCMP to communicate with the sibling chains.
-        XcmpQueue,
-    )
->;
+pub type XcmRouter = WithUniqueTopic<(
+    // Two routers - use UMP to communicate with the relay chain:
+    cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+    // ..and XCMP to communicate with the sibling chains.
+    XcmpQueue,
+)>;
 
 impl pallet_xcm::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;

@@ -1,11 +1,11 @@
-use cumulus_primitives_core::ParaId;
-use mandala_runtime::{ AccountId, AuraId, Signature, EXISTENTIAL_DEPOSIT };
-use sc_chain_spec::{ ChainSpecExtension, ChainSpecGroup };
-use sc_service::ChainType;
-use serde::{ Deserialize, Serialize };
-use sp_core::{ sr25519, Pair, Public };
-use sp_runtime::traits::{ IdentifyAccount, Verify };
 pub use super::*;
+use cumulus_primitives_core::ParaId;
+use mandala_runtime::{AccountId, AuraId, Signature, EXISTENTIAL_DEPOSIT};
+use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
+use sc_service::ChainType;
+use serde::{Deserialize, Serialize};
+use sp_core::{sr25519, Pair, Public};
+use sp_runtime::traits::{IdentifyAccount, Verify};
 
 pub struct Dev;
 // TODO : for @AnggaDanarP
@@ -91,7 +91,7 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
             // collator 1
             authority_keys_from_public("5HMa8oTYwr5viSwQBSbWgM7vxxiCcgLUgSbcumExjEyJ8sTr"),
             // collator 2
-            authority_keys_from_public("5HTaZj7BtHFN5NsK5CYcK99ZPmH8ESz78hybbjmftKsCKyn1")
+            authority_keys_from_public("5HTaZj7BtHFN5NsK5CYcK99ZPmH8ESz78hybbjmftKsCKyn1"),
         ]
     }
 
@@ -114,7 +114,7 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
             // team
             account_id!("cf34cEfE42aB033Db814639f72EA37baD3e82219"),
             // foundation
-            account_id!("e6D8A2F367250bc677a3D566E3Aeb526697C7399")
+            account_id!("e6D8A2F367250bc677a3D566E3Aeb526697C7399"),
         ]
     }
 
@@ -138,10 +138,6 @@ impl CustomChainSpecProperties for NodeChainSpec<Live> {
     }
 }
 // ----------------------------------------- End   dev chainspec custom -----------------------------------------
-
-
-
-
 
 // /// Specialized `ChainSpec` for the normal parachain runtime.
 // pub type ChainSpec = sc_service::GenericChainSpec<(), Extensions>;
