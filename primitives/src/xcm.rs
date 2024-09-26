@@ -1,8 +1,7 @@
 use frame_support::traits::{ fungible::{Balanced, Credit}, Get, OnUnbalanced, OriginTrait };
-use orml_traits::location::{ RelativeReserveProvider, Reserve };
 use sp_runtime::traits::TryConvert;
-use sp_std::{ convert::TryInto, marker::PhantomData };
-use xcm::latest::{ Asset, Junction::AccountKey20, Location, NetworkId };
+use sp_std::{ convert::TryInto };
+use xcm::latest::{ Junction::AccountKey20, Location, NetworkId };
 
 /// Instructs how to convert a 20 byte accountId into a Location
 pub struct AccountIdToLocation<AccountId>(sp_std::marker::PhantomData<AccountId>);
