@@ -61,6 +61,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
             Box::new(
                 <NodeChainSpec<Dev> as chain_spec::mandala::CustomChainSpecProperties>::build()
             ),
+        //TODO: create path for mainnet chain spec
         path => {
             #[cfg(feature = "mandala-native")]
             {
