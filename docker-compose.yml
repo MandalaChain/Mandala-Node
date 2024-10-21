@@ -1,0 +1,9 @@
+services:
+  mandala:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./res/dev/state:/app/res/dev/state
+    working_dir: /app/zombienet
+    entrypoint: ["./run.sh", "dev", "./binaries/zombienet"]

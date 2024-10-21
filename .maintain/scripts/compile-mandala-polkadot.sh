@@ -12,8 +12,8 @@ print_usage() {
 # Set variables
 REPO_URL="https://github.com/MandalaChain/polkadot-sdk"
 BRANCH="mandala-polkadot-v1.11.0"
-TMP_DIR="./tmp/mandala-polkadot-build"
-BINARIES_DIR="zombienet/binaries"
+TMP_DIR="tmp/mandala-polkadot-build"
+BINARIES_DIR="./zombienet/binaries"
 
 # Create and navigate to temporary directory
 mkdir -p "$TMP_DIR"
@@ -38,6 +38,9 @@ fi
 echo "Switching to branch $BRANCH..."
 git checkout "$BRANCH"
 
+sed -i 's/&clock/clock/g' substrate/client/rpc-servers/src/middleware/rate_limit.rs
+sed -i 's/(Quota::per_minute(n), clock)/(Quota::per_minute(n), clock.clone())/g' substrate/client/rpc-servers/src/middleware/rate_limit.rs
+
 echo "Updating Cargo dependencies..."
 cargo update
 
@@ -53,13 +56,12 @@ fi
 # Make binaries executable
 chmod +x target/release/polkadot target/release/polkadot-prepare-worker target/release/polkadot-execute-worker
 
-# Copy binaries to the project's binaries directory
-echo "Copying binaries to $BINARIES_DIR..."
-mkdir -p "$BINARIES_DIR"
-cp target/release/polkadot target/release/polkadot-prepare-worker target/release/polkadot-execute-worker "$BINARIES_DIR/"
-
 # Navigate back to the project root
 cd -
+
+# Copy binaries to the project's binaries directory
+echo "Copying binaries to $BINARIES_DIR..."
+cp $TMP_DIR/target/release/polkadot $TMP_DIR/target/release/polkadot-prepare-worker $TMP_DIR/target/release/polkadot-execute-worker "$BINARIES_DIR/"
 
 # Remove temporary directory
 echo "Cleaning up..."
