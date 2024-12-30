@@ -13,7 +13,7 @@ print_usage() {
 REPO_URL="https://github.com/MandalaChain/polkadot-sdk"
 BRANCH="mandala-polkadot-v1.11.0"
 TMP_DIR="./tmp/mandala-polkadot-build"
-BINARIES_DIR="zombienet/binaries"
+BINARIES_DIR=".maintain/zombienet/binaries"
 
 # Create and navigate to temporary directory
 mkdir -p "$TMP_DIR"

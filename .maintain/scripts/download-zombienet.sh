@@ -11,7 +11,7 @@ print_usage() {
 }
 
 # Ensure script is run from project root
-if [ ! -d ".maintain" ] || [ ! -d "zombienet" ]; then
+if [ ! -d ".maintain" ] || [ ! -d ".maintain/zombienet" ]; then
     echo "Error: This script must be run from the root of the project."
     print_usage
     exit 1
@@ -55,7 +55,7 @@ case $OS in
 esac
 
 # Set binaries directory relative to project root
-BINARIES_DIR="zombienet/binaries"
+BINARIES_DIR=".maintain/zombienet/binaries"
 
 # Create binaries directory if it doesn't exist
 mkdir -p "$BINARIES_DIR"

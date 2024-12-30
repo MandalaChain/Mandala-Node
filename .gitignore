@@ -145,7 +145,7 @@ Temporary Items
 
 **/node_modules
 
-zombienet/binaries/*
-!zombienet/binaries/.gitkeep
+.maintain/zombienet/binaries/*
+!.maintain/zombienet/binaries/.gitkeep
 log
 .aider*
