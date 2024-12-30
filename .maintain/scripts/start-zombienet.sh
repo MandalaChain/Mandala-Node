@@ -45,6 +45,11 @@ case $CHAIN_TYPE in
         ;;
 esac
 
+# Make mandala binary executable and copy to binaries directory
+chmod +x ./target/release/mandala
+mkdir -p $ROOT/zombienet/binaries
+cp ./target/release/mandala $ROOT/zombienet/binaries/
+
 ./target/release/mandala build-spec --chain dev > $CHAIN_PATH
 
 cd $ROOT/zombienet
