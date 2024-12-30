@@ -60,15 +60,19 @@ Defines:
 
 ## Usage
 
-1. Ensure all required binaries are present:
+1. Download Zombienet:
 ```bash
 .maintain/scripts/download-zombienet.sh
+```
+
+2. Compile Mandala Polkadot:
+```bash
 .maintain/scripts/compile-mandala-polkadot.sh
 ```
 
-2. Start the network:
+3. Start the network:
 ```bash
-.maintain/scripts/start-zombienet.sh <chain-type> [zombienet-path]
+.maintain/scripts/start-zombienet.sh <chain-type>
 ```
 
 ### Chain Types

@@ -24,24 +24,24 @@ This directory contains various maintenance scripts and tools for setting up and
 
 ## Quick Start
 
-1. Install Dependencies:
-```bash
-.maintain/scripts/install-rust-toolchain.sh
-```
-
-2. Download Zombienet:
+1. Download Zombienet:
 ```bash
 .maintain/scripts/download-zombienet.sh
 ```
 
-3. Compile Polkadot:
+2. Compile Mandala Polkadot:
 ```bash
 .maintain/scripts/compile-mandala-polkadot.sh
 ```
 
-4. Start Testing Environment:
+3. Start Testing Environment:
 ```bash
 .maintain/scripts/start-zombienet.sh <chain-type>
+```
+
+Note: If you haven't installed Rust yet, first run:
+```bash
+.maintain/scripts/install-rust-toolchain.sh
 ```
 
 ## Scripts Overview
