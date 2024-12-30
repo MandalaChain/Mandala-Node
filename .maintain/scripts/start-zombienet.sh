@@ -55,6 +55,6 @@ cp ./target/release/mandala $ROOT/.maintain/zombienet/binaries/
 cd $ROOT/.maintain/zombienet
 cp $CHAIN_PATH .
 
-PATH=$ROOT/.maintain/zombienet/binaries:$PATH CHAIN=$CHAIN_TYPE.json $ZOMBIENET_PATH spawn $ROOT/zombienet/config.toml --provider native
+PATH=$ROOT/.maintain/zombienet/binaries:$PATH CHAIN=$CHAIN_TYPE.json $ZOMBIENET_PATH spawn $ROOT/.maintain/zombienet/config.toml --provider native
 
 rm $CHAIN_TYPE.json

@@ -15,6 +15,10 @@ BRANCH="mandala-polkadot-v1.11.0"
 TMP_DIR="./tmp/mandala-polkadot-build"
 BINARIES_DIR=".maintain/zombienet/binaries"
 
+# Get the absolute path of the project root before changing directories
+PROJECT_ROOT=$(pwd)
+ABSOLUTE_BINARIES_DIR="$PROJECT_ROOT/$BINARIES_DIR"
+
 # Create and navigate to temporary directory
 mkdir -p "$TMP_DIR"
 cd "$TMP_DIR"
@@ -54,12 +58,12 @@ fi
 chmod +x target/release/polkadot target/release/polkadot-prepare-worker target/release/polkadot-execute-worker
 
 # Copy binaries to the project's binaries directory
-echo "Copying binaries to $BINARIES_DIR..."
-mkdir -p "$BINARIES_DIR"
-cp target/release/polkadot target/release/polkadot-prepare-worker target/release/polkadot-execute-worker "$BINARIES_DIR/"
+echo "Copying binaries to $ABSOLUTE_BINARIES_DIR..."
+mkdir -p "$ABSOLUTE_BINARIES_DIR"
+cp target/release/polkadot target/release/polkadot-prepare-worker target/release/polkadot-execute-worker "$ABSOLUTE_BINARIES_DIR/"
 
 # Navigate back to the project root
-cd -
+cd "$PROJECT_ROOT"
 
 # Remove temporary directory
 echo "Cleaning up..."
