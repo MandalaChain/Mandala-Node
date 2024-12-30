@@ -148,3 +148,4 @@ Temporary Items
 zombienet/binaries/*
 !zombienet/binaries/.gitkeep
 log
+.aider*
