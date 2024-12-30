@@ -17,6 +17,21 @@ if [ ! -d ".maintain" ] || [ ! -d ".maintain/zombienet" ]; then
     exit 1
 fi
 
+# Detect CPU architecture
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)
+        ARCH="x64"
+        ;;
+    aarch64|arm64)
+        ARCH="arm64"
+        ;;
+    *)
+        echo "Unsupported CPU architecture: $ARCH"
+        exit 1
+        ;;
+esac
+
 # Detect operating system
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if grep -q Microsoft /proc/version; then
@@ -40,13 +55,13 @@ fi
 # Note: v1.3.109 is the working version during testing
 ZOMBIENET_VERSION="v1.3.109"
 
-# Set download URL based on OS
+# Set download URL based on OS and architecture
 case $OS in
     linux)
-        DOWNLOAD_URL="https://github.com/paritytech/zombienet/releases/download/${ZOMBIENET_VERSION}/zombienet-linux-x64"
+        DOWNLOAD_URL="https://github.com/paritytech/zombienet/releases/download/${ZOMBIENET_VERSION}/zombienet-linux-${ARCH}"
         ;;
     macos)
-        DOWNLOAD_URL="https://github.com/paritytech/zombienet/releases/download/${ZOMBIENET_VERSION}/zombienet-macos-x64"
+        DOWNLOAD_URL="https://github.com/paritytech/zombienet/releases/download/${ZOMBIENET_VERSION}/zombienet-macos-${ARCH}"
         ;;
     *)
         echo "Unsupported operating system for Zombienet download"
