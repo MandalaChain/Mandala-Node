@@ -19,7 +19,7 @@ use sc_service::{
     DatabaseSource,
 };
 use sp_runtime::{
-    traits::{AccountIdConversion, Block as BlockT, HashingFor, Header, Zero},
+    traits::{AccountIdConversion, Block as BlockT, HashingFor, Zero},
     StateVersion,
 };
 
@@ -31,7 +31,7 @@ use crate::chain_spec::niskala::{Dev, Live, NodeChainSpec};
 use crate::service::ParachainNativeExecutor;
 
 use crate::{
-    chain_spec::{self, *},
+    chain_spec::{self},
     cli::{Cli, RelayChainCli, Subcommand},
     eth::db_config_dir,
     service::new_partial,
@@ -176,17 +176,13 @@ macro_rules! construct_async_run {
     };
 }
 impl Cli {
-    fn runtime_version(spec: &Box<dyn sc_service::ChainSpec>) -> &'static RuntimeVersion {
+    #[allow(dead_code)]
+    fn runtime_version(spec: &dyn sc_service::ChainSpec) -> &'static RuntimeVersion {
         match spec {
             #[cfg(feature = "niskala-native")]
-            spec => {
-                return &niskala_runtime::VERSION;
-            }
+            _ => &niskala_runtime::VERSION,
             #[cfg(feature = "mandala-native")]
-            spec => {
-                return &mandala_runtime::VERSION;
-            }
-            _ => panic!("invalid chain spec"),
+            _ => &mandala_runtime::VERSION,
         }
     }
 }
@@ -297,8 +293,8 @@ pub fn run() -> Result<()> {
 
             runner.sync_run(|mut config| {
                 let partials = new_partial(&mut config, &eth_cfg)?;
-                let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
-                cmd.run(partials.client);
+                let _spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
+                let _ = cmd.run(partials.client);
 
                 Ok(())
             })
@@ -311,12 +307,13 @@ pub fn run() -> Result<()> {
             })
         }
         Some(Subcommand::Benchmark(cmd)) => {
-            let runner = cli.create_runner(cmd)?;
+            let runner = cli.create_runner(&**cmd)?;
             // Switch on the concrete benchmark sub-command-
-            match cmd {
+            match &**cmd {
                 BenchmarkCmd::Pallet(cmd) => {
                     if cfg!(feature = "runtime-benchmarks") {
                         runner.sync_run(|config| {
+                            #[allow(deprecated)]
                             cmd.run::<HashingFor<Block>, crate::service::HostFunctions>(config)
                         })
                     } else {
@@ -330,14 +327,11 @@ pub fn run() -> Result<()> {
                     cmd.run(partials.client)
                 }),
                 #[cfg(not(feature = "runtime-benchmarks"))]
-                BenchmarkCmd::Storage(_) => {
-                    return Err(sc_cli::Error::Input(
-                        "Compile with --features=runtime-benchmarks \
+                BenchmarkCmd::Storage(_) => Err(sc_cli::Error::Input(
+                    "Compile with --features=runtime-benchmarks \
 						to enable storage benchmarks."
-                            .into(),
-                    )
-                    .into());
-                }
+                        .into(),
+                )),
                 #[cfg(feature = "runtime-benchmarks")]
                 BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
                     let partials = new_partial(&mut config, &eth_cfg)?;
@@ -417,6 +411,11 @@ pub fn run() -> Result<()> {
                         chain_spec::mandala::Extensions::try_get(&*config.chain_spec)
                             .map(|e| e.para_id)
                             .ok_or("Could not find parachain ID in chain-spec.")?
+                    }
+
+                    #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
+                    {
+                        return Err("No runtime feature enabled".to_string());
                     }
                 };
 
@@ -598,6 +597,7 @@ impl CliConfiguration<Self> for RelayChainCli {
 }
 
 /// Generate the genesis block from a given ChainSpec.
+#[allow(dead_code)]
 pub fn generate_genesis_block<Block: BlockT>(
     chain_spec: &dyn ChainSpec,
     genesis_state_version: StateVersion,

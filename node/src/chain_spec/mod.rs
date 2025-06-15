@@ -30,6 +30,7 @@ pub use sp_runtime::traits::Verify;
 pub use std::{collections::BTreeMap, marker::PhantomData};
 
 #[macro_export(local_inner_macros)]
+/// Helper macro to convert hex string to AccountId
 macro_rules! account_id {
     ($id:literal) => {
         AccountId::from(hex_literal::hex!($id))
@@ -70,6 +71,7 @@ pub fn template_session_keys(keys: AuraId) -> mandala_runtime::SessionKeys {
     mandala_runtime::SessionKeys { aura: keys }
 }
 
+#[allow(dead_code)]
 pub trait CustomChainSpecProperties {
     fn wasm_binary() -> &'static [u8] {
         WASM_BINARY.expect("Development wasm not available")
@@ -270,10 +272,12 @@ pub trait CustomChainSpecProperties {
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<RuntimeGenesisConfig, Extensions>;
 
+#[allow(dead_code)]
 pub type AccountPublic = <Signature as Verify>::Signer;
 
 pub struct Account;
 
+#[allow(dead_code)]
 impl Account {
     pub fn get_from_seed_with_ecdsa(seed: &str) -> ecdsa::Public {
         ecdsa::Pair::from_string(&format!("//{}", seed), None)

@@ -55,9 +55,9 @@ sp-version = { workspace = true }
 pallet-xcm = { workspace = true }
 polkadot-parachain-primitives = { workspace = true }
 polkadot-runtime-common = { workspace = true }
-xcm = { package = "staging-xcm", workspace = true, default-features = false }
-xcm-builder = { package = "staging-xcm-builder", workspace = true, default-features = false }
-xcm-executor = { package = "staging-xcm-executor", workspace = true, default-features = false }
+xcm = { workspace = true, default-features = false }
+xcm-builder = { workspace = true, default-features = false }
+xcm-executor = { workspace = true, default-features = false }
 
 # Cumulus
 cumulus-pallet-aura-ext = { workspace = true }
@@ -71,7 +71,7 @@ cumulus-primitives-core = { workspace = true }
 cumulus-primitives-utility = { workspace = true }
 pallet-collator-selection = { workspace = true }
 parachains-common = { workspace = true }
-parachain-info = { package = "staging-parachain-info", workspace = true, default-features = false }
+parachain-info = { workspace = true, default-features = false }
 pallet-utility = { workspace = true }
 pallet-multisig = { workspace = true }
 cumulus-primitives-aura = { workspace = true }

@@ -125,6 +125,7 @@ impl<Api> EthCompatRuntimeApiCollection for Api where
 {
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn spawn_frontier_tasks<RuntimeApi>(
     task_manager: &TaskManager,
     client: Arc<crate::service::ParachainClient>,

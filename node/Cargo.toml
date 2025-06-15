@@ -55,7 +55,7 @@ sc-consensus-manual-seal = { workspace = true }
 # Polkadot
 polkadot-cli = { workspace = true }
 polkadot-primitives = { workspace = true }
-xcm = { package = "staging-xcm", workspace = true }
+xcm = { workspace = true }
 
 # Cumulus
 cumulus-client-cli = { workspace = true }
@@ -116,7 +116,7 @@ substrate-build-script-utils = { workspace = true }
 niskala-native = ["niskala-runtime"]
 mandala-native = ["mandala-runtime"]
 
-default = []
+default = ["mandala-native"]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",

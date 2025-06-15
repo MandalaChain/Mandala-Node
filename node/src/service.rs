@@ -54,6 +54,7 @@ use crate::eth::{
 };
 
 // Native executor type.
+#[allow(dead_code)]
 pub struct ParachainNativeExecutor;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -104,22 +105,25 @@ fn prevent_rocks_db(config: &mut Configuration) {
     match &config.database {
         fc_db::DatabaseSource::Auto {
             paritydb_path,
-            rocksdb_path,
-            cache_size,
+            rocksdb_path: _,
+            cache_size: _,
         } => {
             config.database = fc_db::DatabaseSource::ParityDb {
                 path: paritydb_path.to_owned(),
             };
         }
-        fc_db::DatabaseSource::RocksDb { path, cache_size } => {
+        fc_db::DatabaseSource::RocksDb {
+            path,
+            cache_size: _,
+        } => {
             config.database = fc_db::DatabaseSource::ParityDb {
                 path: path.to_owned(),
             };
         }
-        fc_db::DatabaseSource::ParityDb { path } => (),
+        fc_db::DatabaseSource::ParityDb { path: _ } => (),
         fc_db::DatabaseSource::Custom {
-            db,
-            require_create_flag,
+            db: _,
+            require_create_flag: _,
         } => (),
     }
 }
@@ -287,8 +291,8 @@ fn build_import_queue(
     telemetry: Option<TelemetryHandle>,
     task_manager: &TaskManager,
 ) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error> {
-    let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-    let target_gas_price = eth_config.target_gas_price;
+    let _slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+    let _target_gas_price = eth_config.target_gas_price;
     let create_inherent_data_providers = move |_, _| async move {
         let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
@@ -313,6 +317,7 @@ fn build_import_queue(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn start_consensus(
     client: Arc<ParachainClient>,
     backend: Arc<ParachainBackend>,
@@ -333,7 +338,7 @@ fn start_consensus(
     // NOTE: because we use Aura here explicitly, we can use `CollatorSybilResistance::Resistant`
     // when starting the network.
 
-    let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+    let _slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
 
     let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
         task_manager.spawn_handle(),
@@ -479,7 +484,7 @@ async fn start_node_impl(
         fc_mapping_sync::EthereumBlockNotification<Block>,
     > = Default::default();
     let pubsub_notification_sinks = Arc::new(pubsub_notification_sinks);
-    let target_gas_price = eth_config.target_gas_price;
+    let _target_gas_price = eth_config.target_gas_price;
 
     // for ethereum-compatibility rpc.
     parachain_config.rpc_id_provider = Some(Box::new(fc_rpc::EthereumSubIdProvider));
