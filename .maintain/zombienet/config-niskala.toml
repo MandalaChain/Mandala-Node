@@ -3,21 +3,16 @@ timeout = 1000
 
 [relaychain]
 default_command = "polkadot"
-# Using rococo-local for local development (paseo-local for production)
 chain = "rococo-local" 
 chain_spec_path = "./plain.json"
 
 [[relaychain.nodes]]
 name = "alice"
 validator = true
-ws_port = 9944
-p2p_port = 30444
 
 [[relaychain.nodes]]
 name = "bob"
 validator = true
-ws_port = 9945
-p2p_port = 30445
 
 [[parachains]]
 id = 2000
@@ -29,32 +24,8 @@ force_decorator = "generic-evm"
 [[parachains.collators]]
 name = "niskala-collator-1"
 command = "mandala"
-args = [
-    "--rpc-cors=all",
-    "--rpc-methods=Unsafe",
-    "--rpc-external",
-    "--prometheus-external",
-    "--force-authoring",
-    "--pruning=archive",
-    "--name=NISKALA_1"
-]
-ws_port = 9946
-p2p_port = 30333
-prometheus_port = 9615
 
 # Second collator - mimics NISKALA_2 from production
 [[parachains.collators]]
 name = "niskala-collator-2"
 command = "mandala"
-args = [
-    "--rpc-cors=all",
-    "--rpc-methods=Unsafe",
-    "--rpc-external",
-    "--prometheus-external",
-    "--force-authoring",
-    "--pruning=archive",
-    "--name=NISKALA_2"
-]
-ws_port = 9947
-p2p_port = 30335
-prometheus_port = 9616
