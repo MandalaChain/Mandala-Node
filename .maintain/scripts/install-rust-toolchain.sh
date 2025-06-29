@@ -2,6 +2,10 @@
 
 set -e
 
+# Source common utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 # Function to print usage
 print_usage() {
     echo "Usage: $0 [-w|--which version]"
@@ -24,7 +28,7 @@ while getopts ":w:-:" opt; do
                     shift
                     ;;
                 * )
-                    echo "Invalid option: --$OPTARG" >&2
+                    print_error "Invalid option: --$OPTARG" >&2
                     print_usage
                     exit 1
                     ;;
@@ -35,7 +39,7 @@ while getopts ":w:-:" opt; do
             exit 1
             ;;
         : )
-            echo "Error: -$OPTARG requires an argument."
+            print_error "Error: -$OPTARG requires an argument."
             print_usage
             exit 1
             ;;
@@ -43,16 +47,9 @@ while getopts ":w:-:" opt; do
 done
 
 # Detect operating system
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if grep -q Microsoft /proc/version; then
-        OS="wsl"
-    else
-        OS="linux"
-    fi
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    OS="macos"
-else
-    echo "Unsupported operating system: $OSTYPE"
+OS=$(detect_os)
+if [[ "$OS" == "unknown" ]]; then
+    print_error "Unsupported operating system: $OSTYPE"
     exit 1
 fi
 
@@ -66,27 +63,27 @@ if [ -f "$OS_SCRIPT" ]; then
     # Run the OS-specific script
     "$OS_SCRIPT" "$RUST_VERSION"
 else
-    echo "Error: OS-specific script not found: $OS_SCRIPT"
+    print_error "OS-specific script not found: $OS_SCRIPT"
     exit 1
 fi
 
 # Verify installation
-echo "Verifying Rust installation..."
+print_status "Verifying Rust installation..."
 rustc --version
 cargo --version
 rustup --version
 
-echo "Configuring Rust toolchain..."
+print_status "Configuring Rust toolchain..."
 rustup default stable
 rustup update
 rustup target add wasm32-unknown-unknown
 
-echo "Adding nightly release and WebAssembly target..."
+print_status "Adding nightly release and WebAssembly target..."
 rustup update nightly
 rustup target add wasm32-unknown-unknown --toolchain nightly
 
-echo "Verifying configuration..."
+print_status "Verifying configuration..."
 rustup show
 rustup +nightly show
 
-echo "Rust toolchain installation and configuration completed successfully!"
+print_status "Rust toolchain installation and configuration completed successfully!"

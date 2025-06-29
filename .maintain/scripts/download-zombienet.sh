@@ -2,6 +2,10 @@
 
 set -e
 
+# Source common utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
 # Function to print usage
 print_usage() {
     echo "Usage: $0"
@@ -10,46 +14,46 @@ print_usage() {
     echo "Note: On Windows, you need to run this script using Windows Subsystem for Linux (WSL)."
 }
 
-# Ensure script is run from project root
-if [ ! -d ".maintain" ] || [ ! -d ".maintain/zombienet" ]; then
-    echo "Error: This script must be run from the root of the project."
+# Check if we're in the project root
+if ! check_project_root; then
     print_usage
     exit 1
 fi
 
-# Detect CPU architecture
-ARCH=$(uname -m)
+# Detect CPU architecture and OS
+ARCH=$(detect_arch)
+OS=$(detect_os)
+
+# Validate architecture
 case $ARCH in
-    x86_64)
-        ARCH="x64"
-        ;;
-    aarch64|arm64)
-        ARCH="arm64"
+    x64|arm64)
+        # Supported architectures
         ;;
     *)
-        echo "Unsupported CPU architecture: $ARCH"
+        print_error "Unsupported CPU architecture: $ARCH"
         exit 1
         ;;
 esac
 
-# Detect operating system
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    if grep -q Microsoft /proc/version; then
-        OS="linux" # Using Linux binary for WSL
-    else
+# Map OS for Zombienet
+case $OS in
+    linux|wsl)
         OS="linux"
-    fi
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    OS="macos"
-elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-    echo "Error: This script cannot be run directly on Windows."
-    echo "Please use Windows Subsystem for Linux (WSL) to run this script."
-    exit 1
-else
-    echo "Unsupported operating system: $OSTYPE"
-    echo "If you're on Windows, please use Windows Subsystem for Linux (WSL) to run this script."
-    exit 1
-fi
+        ;;
+    macos)
+        OS="macos"
+        ;;
+    windows)
+        print_error "This script cannot be run directly on Windows."
+        print_info "Please use Windows Subsystem for Linux (WSL) to run this script."
+        exit 1
+        ;;
+    *)
+        print_error "Unsupported operating system: $OS"
+        print_info "If you're on Windows, please use Windows Subsystem for Linux (WSL) to run this script."
+        exit 1
+        ;;
+esac
 
 # Set Zombienet version
 # Note: v1.3.109 is the working version during testing
@@ -81,14 +85,20 @@ if [ -e "$BINARIES_DIR/zombienet" ] || [ -L "$BINARIES_DIR/zombienet" ]; then
 fi
 
 # Download Zombienet binary
-echo "Downloading Zombienet ${ZOMBIENET_VERSION} for ${OS}..."
-wget -O "$BINARIES_DIR/zombienet.tmp" "$DOWNLOAD_URL"
-
-# Move the temporary file to the final location
-mv "$BINARIES_DIR/zombienet.tmp" "$BINARIES_DIR/zombienet"
-
-# Make the binary executable
-chmod +x "$BINARIES_DIR/zombienet"
-
-echo "Zombienet binary downloaded and installed successfully in $BINARIES_DIR"
-echo "You can run it using: $BINARIES_DIR/zombienet"
+if download_file "$DOWNLOAD_URL" "$BINARIES_DIR/zombienet.tmp" "Zombienet ${ZOMBIENET_VERSION}"; then
+    # Move the temporary file to the final location
+    mv "$BINARIES_DIR/zombienet.tmp" "$BINARIES_DIR/zombienet"
+    
+    # Make the binary executable
+    if make_executable "$BINARIES_DIR/zombienet"; then
+        print_status "Zombienet binary downloaded and installed successfully in $BINARIES_DIR"
+        print_info "Version: ${ZOMBIENET_VERSION}"
+        print_info "Architecture: ${OS}-${ARCH}"
+        print_info "You can run it using: $BINARIES_DIR/zombienet"
+    else
+        exit 1
+    fi
+else
+    print_error "Failed to download Zombienet binary"
+    exit 1
+fi

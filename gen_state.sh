@@ -1,10 +1,10 @@
 #! bash
 
 CHAIN=$1
-CHAINS=("local" "testnet" "mainnet")
+CHAINS=("local" "mainnet" "dev" "live")
 
 if [ -z "$1" ]; then
-    echo "Usage: gen_state.sh <chain> [all, local, testnet, mainnet]"
+    echo "Usage: gen_state.sh <chain> [all, local, mainnet, dev, live]"
     exit 1
 fi
 
@@ -19,12 +19,23 @@ cargo build --release
 
 gen_state() {
     CHAIN=$1
-    PATH=$ROOT/res/$CHAIN/$CHAIN.json
-    RAW_PATH=$ROOT/res/$CHAIN/raw-$CHAIN.json
+    
+    # Determine the correct directory structure
+    if [[ "$CHAIN" == "local" ]] || [[ "$CHAIN" == "mainnet" ]]; then
+        CHAIN_DIR="mandala"
+    elif [[ "$CHAIN" == "dev" ]] || [[ "$CHAIN" == "live" ]]; then
+        CHAIN_DIR="niskala"
+    else
+        echo "Unknown chain: $CHAIN"
+        exit 1
+    fi
+    
+    PATH=$ROOT/res/$CHAIN_DIR/$CHAIN/$CHAIN.json
+    RAW_PATH=$ROOT/res/$CHAIN_DIR/$CHAIN/$CHAIN-raw.json
 
     $MANDALA_BIN build-spec --chain $PATH --raw >$RAW_PATH
-    $MANDALA_BIN export-genesis-state --chain $RAW_PATH >$ROOT/res/$CHAIN/state/genesis-state.json
-    $MANDALA_BIN export-genesis-wasm --chain $RAW_PATH >$ROOT/res/$CHAIN/state/genesis-wasm.wasm
+    $MANDALA_BIN export-genesis-state --chain $RAW_PATH >$ROOT/res/$CHAIN_DIR/$CHAIN/state/genesis-state
+    $MANDALA_BIN export-genesis-wasm --chain $RAW_PATH >$ROOT/res/$CHAIN_DIR/$CHAIN/state/genesis-wasm.wasm
 }
 
 if [ "$1" == "all" ]; then

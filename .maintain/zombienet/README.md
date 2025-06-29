@@ -9,13 +9,17 @@ This directory contains the Zombienet configuration and testing infrastructure f
 ```
 zombienet/
 ├── README.md           # This documentation
-├── configs/            # Configuration files
-│   ├── json/          # JSON configuration variants
-│   │   └── config.json
-│   └── toml/          # TOML configuration variants
-│       └── config.toml
-└── binaries/          # Required binary files
-    └── .gitkeep
+├── config.json         # JSON configuration for Mandala
+├── config.toml         # TOML configuration for Mandala
+├── config-niskala.toml # TOML configuration for Niskala
+├── plain.json          # Plain chain spec
+├── plain-raw.json      # Raw chain spec
+└── binaries/          # Required binary files (downloaded)
+    ├── zombienet
+    ├── polkadot
+    ├── polkadot-parachain
+    ├── polkadot-prepare-worker
+    └── polkadot-execute-worker
 ```
 
 ## Prerequisites
@@ -60,20 +64,31 @@ Defines:
 
 ## Usage
 
-1. Download Zombienet:
+### Quick Setup (Recommended)
+
+From the project root, run these commands:
+
+1. **Download Zombienet binary:**
 ```bash
 .maintain/scripts/download-zombienet.sh
 ```
 
-2. Compile Mandala Polkadot:
+2. **Download Polkadot binaries:**
 ```bash
-.maintain/scripts/compile-mandala-polkadot.sh
+# Automatically detects OS and architecture
+.maintain/scripts/download-polkadot-binaries.sh
 ```
 
-3. Start the network:
+3. **Start the network:**
 ```bash
 .maintain/scripts/start-zombienet.sh <chain-type>
 ```
+
+This will automatically:
+- Build the parachain binary with appropriate features
+- Generate chain specifications
+- Export genesis state and wasm
+- Launch the network with appropriate configuration
 
 ### Chain Types
 - `local`: Local development chain (Mandala)
@@ -83,18 +98,39 @@ Defines:
 
 ## Troubleshooting
 
-1. Binary Missing:
-   - Verify all required binaries are in `binaries/`
-   - Re-run compilation scripts if needed
+### Binary Issues
 
-2. Port Conflicts:
-   - Check port availability
+1. **macOS Quarantine** (Apple Silicon/Intel):
+   ```bash
+   xattr -d com.apple.quarantine .maintain/zombienet/binaries/*
+   ```
+
+2. **Missing Binaries**:
+   - Run: `.maintain/scripts/download-polkadot-binaries.sh`
+   - For macOS, this automatically uses the macOS-specific script
+   - For Linux, it uses Zombienet's setup command
+
+3. **Compilation Issues** (if building from source):
+   - The MandalaChain fork may have dependency issues
+   - Use pre-built binaries instead (recommended)
+
+### Network Issues
+
+1. **Port Conflicts**:
+   - Default ports: 9944, 9945, 9946, 9947, 9988
+   - Check if ports are in use: `lsof -i :9944`
    - Modify port numbers in config files if needed
 
-3. Network Connection:
-   - Verify relay chain is running
-   - Check parachain registration
-   - Review logs for connection errors
+2. **Parachain Not Producing Blocks**:
+   - Ensure manual registration was completed
+   - Check relay chain is running properly
+   - Review parachain collator logs
+
+### Platform-Specific Notes
+
+- **Apple Silicon (M1/M2/M3)**: Scripts automatically detect ARM64 architecture
+- **Docker on macOS**: May require additional resources allocation
+- **WSL**: Use Linux binary downloads, not Windows native
 
 ## Additional Resources
 

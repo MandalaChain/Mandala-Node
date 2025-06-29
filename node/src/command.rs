@@ -202,7 +202,6 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
-                
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             construct_async_run!(|components, cli, cmd, config, eth_cfg| {
@@ -292,7 +291,6 @@ pub fn run() -> sc_cli::Result<()> {
 
                 cmd.run(config, polkadot_config)
             })
-                
         }
         Some(Subcommand::ExportGenesisHead(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -304,7 +302,6 @@ pub fn run() -> sc_cli::Result<()> {
 
                 Ok(())
             })
-                
         }
         Some(Subcommand::ExportGenesisWasm(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -312,7 +309,6 @@ pub fn run() -> sc_cli::Result<()> {
                 let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
                 cmd.run(&*spec)
             })
-                
         }
         Some(Subcommand::Benchmark(cmd)) => {
             let runner = cli.create_runner(&**cmd)?;
@@ -324,17 +320,18 @@ pub fn run() -> sc_cli::Result<()> {
                             #[allow(deprecated)]
                             cmd.run::<HashingFor<Block>, crate::service::HostFunctions>(config)
                         })
-                            
                     } else {
-                        Err(sc_cli::Error::Input("Benchmarking wasn't enabled when building the node. \
-					You can enable it with `--features runtime-benchmarks`.".into()))
+                        Err(sc_cli::Error::Input(
+                            "Benchmarking wasn't enabled when building the node. \
+					You can enable it with `--features runtime-benchmarks`."
+                                .into(),
+                        ))
                     }
                 }
                 BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
                     let partials = new_partial(&mut config, &eth_cfg)?;
                     cmd.run(partials.client)
-                })
-                    ,
+                }),
                 #[cfg(not(feature = "runtime-benchmarks"))]
                 BenchmarkCmd::Storage(_) => Err(sc_cli::Error::Input(
                     "Compile with --features=runtime-benchmarks \
@@ -347,16 +344,16 @@ pub fn run() -> sc_cli::Result<()> {
                     let db = partials.backend.expose_db();
                     let storage = partials.backend.expose_storage();
                     cmd.run(config, partials.client.clone(), db, storage)
-                })
-                    ,
+                }),
                 BenchmarkCmd::Machine(cmd) => {
                     runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
-                    
                 }
                 // NOTE: this allows the Client to leniently implement
                 // new benchmark commands without requiring a companion MR.
                 #[allow(unreachable_patterns)]
-                _ => Err(sc_cli::Error::Input("Benchmarking sub-command unsupported".into())),
+                _ => Err(sc_cli::Error::Input(
+                    "Benchmarking sub-command unsupported".into(),
+                )),
             }
         }
         #[cfg(feature = "try-runtime")]
@@ -391,11 +388,13 @@ pub fn run() -> sc_cli::Result<()> {
                     task_manager,
                 ))
             })
-                
         }
         #[cfg(not(feature = "try-runtime"))]
-        Some(Subcommand::TryRuntime) => Err(sc_cli::Error::Input("Try-runtime was not enabled when building the node. \
-			You can enable it with `--features try-runtime`.".into())),
+        Some(Subcommand::TryRuntime) => Err(sc_cli::Error::Input(
+            "Try-runtime was not enabled when building the node. \
+			You can enable it with `--features try-runtime`."
+                .into(),
+        )),
 
         None => {
             let runner = cli.create_runner(&cli.run.normalize())?;
@@ -500,7 +499,10 @@ impl CliConfiguration<Self> for RelayChainCli {
             .or_else(|| self.base_path.clone().map(Into::into)))
     }
 
-    fn rpc_addr(&self, default_listen_port: u16) -> sc_cli::Result<Option<Vec<sc_cli::RpcEndpoint>>> {
+    fn rpc_addr(
+        &self,
+        default_listen_port: u16,
+    ) -> sc_cli::Result<Option<Vec<sc_cli::RpcEndpoint>>> {
         self.base.base.rpc_addr(default_listen_port)
     }
 
@@ -514,7 +516,12 @@ impl CliConfiguration<Self> for RelayChainCli {
             .prometheus_config(default_listen_port, chain_spec)
     }
 
-    fn init<F>(&self, _support_url: &String, _impl_version: &String, _logger_hook: F) -> sc_cli::Result<()>
+    fn init<F>(
+        &self,
+        _support_url: &String,
+        _impl_version: &String,
+        _logger_hook: F,
+    ) -> sc_cli::Result<()>
     where
         F: FnOnce(&mut sc_cli::LoggerBuilder),
     {
@@ -535,7 +542,10 @@ impl CliConfiguration<Self> for RelayChainCli {
         self.base.base.role(is_dev)
     }
 
-    fn transaction_pool(&self, is_dev: bool) -> sc_cli::Result<sc_service::config::TransactionPoolOptions> {
+    fn transaction_pool(
+        &self,
+        is_dev: bool,
+    ) -> sc_cli::Result<sc_service::config::TransactionPoolOptions> {
         self.base.base.transaction_pool(is_dev)
     }
 

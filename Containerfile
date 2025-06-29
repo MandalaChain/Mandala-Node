@@ -15,18 +15,18 @@ RUN apt-get update && \
 	useradd -m -u 1000 -U -s /bin/sh -d /polkadot polkadot && \
 	mkdir -p /data /polkadot/.local/share && \
 	chown -R polkadot:polkadot /data && \
-	ln -s /data /polkadot/.local/share/parachain-template-node && \
+	ln -s /data /polkadot/.local/share/mandala && \
 	mkdir -p /specs
 
 USER polkadot
 
 # copy the compiled binary to the container
-COPY --chown=polkadot:polkadot --chmod=774 parachain-template-node /usr/bin/parachain-template-node
+COPY --chown=polkadot:polkadot --chmod=774 mandala /usr/bin/mandala
 
 # check if executable works in this container
-RUN /usr/bin/parachain-template-node --version
+RUN /usr/bin/mandala --version
 
 # ws_port
 EXPOSE 9333 9944 30333 30334
 
-CMD ["/usr/bin/parachain-template-node"]
+CMD ["/usr/bin/mandala"]

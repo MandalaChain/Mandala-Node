@@ -31,34 +31,72 @@ You can generate and view the [Rust Docs](https://doc.rust-lang.org/cargo/comman
 cargo +nightly doc --open
 ```
 
-### Development Chain
-To run a development chain, we first need a relay chain to connect to. In this case, we spin up a 2-node rococo local testnet instance using zombienet. Since zombienet doesn't yet support running ethereun parachain out of the box ([issue](https://github.com/paritytech/zombienet/issues/1826)). So we must manually register our parachain into our Relay chain. To do this, first generate the genesis head and runtime of our node.
+### Development Chain with Zombienet
+
+To run a local development chain with relay chain support, we use Zombienet. Since Zombienet doesn't yet support Ethereum parachains out-of-the-box ([issue](https://github.com/paritytech/zombienet/issues/1826)), manual parachain registration is required.
+
+#### Quick Setup
+
+**Complete setup in 3 commands:**
 
 ```bash
-./target/release/mandala export-genesis-state  --dev > <path>
+# 1. Download Zombienet
+.maintain/scripts/download-zombienet.sh
+
+# 2. Download Polkadot binaries (auto-detects OS/architecture)
+.maintain/scripts/download-polkadot-binaries.sh
+
+# 3. Start Zombienet (builds parachain and launches network)
+.maintain/scripts/start-zombienet.sh local  # For Mandala
+# OR
+.maintain/scripts/start-zombienet.sh dev    # For Niskala
 ```
+
+The `start-zombienet.sh` script automatically:
+- Detects your OS and architecture (Apple Silicon supported)
+- Builds the parachain binary with appropriate features
+- Generates chain specifications
+- Exports genesis state and wasm files
+- Launches a 2-node relay chain network
+- Displays connection endpoints
+
+**Prerequisites** (if not already installed):
 ```bash
-./target/release/mandala export-genesis-wasm --dev > <path>
-```
-> Replace the path with folder you wish to store the state and runtime
+# Install Rust
+.maintain/scripts/install-rust-toolchain.sh
 
-Go to the zombienet folder and run the script
-```bash
-cd zombienet
-./run.sh <zombienet-path>
-```
-> This will spin up 2 relay node with bob and alice as the validator
-
-Then go the root of the project and run the collator :
-```bash 
-./target/release/mandala --dev --charlie --collator --rpc-port 9944 --port 30333 -- --chain ./zombienet/plain.json  --discover-local --port 30334 
+# macOS users:
+.maintain/scripts/install-macos-deps.sh
 ```
 
-After you run the zombienet script, you should see something like this on your terminal :
-![Zombienet Terminal](zombienet_terminal.png)
-Click one of the direct link, and it will take you to `polkadotJS` and automatically connect to the node. On the developer tab, go to sudo and select `parasSudoWrapper`. You should see something like below : 
-![Alt text](sudoWrapper.png)
-Select `sudoScheduleParaInitialize(id, genesis)`. fill the `id` parameter with `2000`. on the `genesisHead` parameter, tick the file upload field and drag your genesis state that you've previously exported. Finally, Set the `paraKind` to `true` and submit the transaction. Wait until the next epoch start and the parachain should produce blocks.
+3. **Network endpoints after launch:**
+- Relay Chain Alice: `ws://localhost:9944`
+- Relay Chain Bob: `ws://localhost:9945`
+- Parachain Collator(s): See script output for ports
+
+#### Manual Parachain Registration
+
+After Zombienet starts:
+
+1. Open PolkadotJS Apps: https://polkadot.js.org/apps/?rpc=ws://localhost:9944
+2. Navigate to: Developer → Sudo → parasSudoWrapper
+3. Select `sudoScheduleParaInitialize(id, genesis)`
+4. Fill in the parameters:
+   - `id`: `2000`
+   - `genesisHead`: Upload file from `.maintain/zombienet/binaries/genesis-state-<chain-type>`
+   - `validationCode`: Upload file from `.maintain/zombienet/binaries/genesis-wasm-<chain-type>`
+   - `paraKind`: `Yes`
+5. Submit the transaction and wait for the next epoch
+
+The parachain should start producing blocks after successful registration.
+
+#### Troubleshooting
+
+- **Apple Silicon users**: Scripts automatically detect and handle ARM64 architecture
+- **Binary downloads**: Pre-built binaries are downloaded for faster setup (no compilation needed)
+- **Port conflicts**: Check if ports 9944, 9945, etc. are already in use
+- **Build from source**: If needed, use `compile-mandala-polkadot.sh` (builds are cached in `tmp/`)
+- **Detailed documentation**: See [.maintain/README.md](.maintain/README.md) for comprehensive setup instructions
 
 ### Connect with Polkadot-JS Apps Front-End
 
