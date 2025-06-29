@@ -28,7 +28,6 @@ frame-support = { workspace = true }
 frame-system = { workspace = true }
 xcm = { workspace = true }
 pallet-balances = { workspace = true }
-orml-traits = { workspace = true }
 pallet-authorship = { workspace = true }
 pallet-evm = { workspace = true }
 
@@ -44,7 +43,6 @@ std = [
 	"pallet-balances/std",
 	"pallet-authorship/std",
 	"xcm/std",
-	"orml-traits/std",
 	"frame-system/std",
 	"frame-support/std",
 	"full_crypto",
