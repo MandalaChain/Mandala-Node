@@ -1,6 +1,7 @@
 pub use super::*;
-use mandala_runtime::{AccountId, AuraId};
-use sc_service::ChainType;
+
+/// Specialized `ChainSpec` for the mandala parachain runtime.
+pub type ChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 pub struct Dev;
 // TODO : for @AnggaDanarP

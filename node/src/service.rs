@@ -13,7 +13,7 @@ use mandala_runtime::{
     RuntimeApi,
 };
 
-#[cfg(feature = "niskala-native")]
+#[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 use niskala_runtime::{
     opaque::{Block, Hash},
     RuntimeApi,
@@ -78,24 +78,32 @@ impl sc_executor::NativeExecutionDispatch for ParachainNativeExecutor {
     type ExtendHostFunctions = HostFunctions;
 
     fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-        #[cfg(feature = "niskala-native")]
+        #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
         {
-            niskala_runtime::api::dispatch(method, data)
+            return niskala_runtime::api::dispatch(method, data);
         }
         #[cfg(feature = "mandala-native")]
         {
             mandala_runtime::api::dispatch(method, data)
         }
+        #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
+        {
+            None
+        }
     }
 
     fn native_version() -> sc_executor::NativeVersion {
-        #[cfg(feature = "niskala-native")]
+        #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
         {
-            niskala_runtime::native_version()
+            return niskala_runtime::native_version();
         }
         #[cfg(feature = "mandala-native")]
         {
             mandala_runtime::native_version()
+        }
+        #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
+        {
+            panic!("No runtime feature enabled");
         }
     }
 }
@@ -143,6 +151,7 @@ type FrontierBlockImport = TFrontierBlockImport<Block, Arc<ParachainClient>, Par
 /// Use this macro if you don't actually need the full service, but just the builder in order to
 /// be able to perform chain operations.
 #[allow(clippy::type_complexity)]
+#[allow(clippy::result_large_err)]
 pub fn new_partial(
     config: &mut Configuration,
     eth_config: &EthConfiguration,
@@ -152,7 +161,7 @@ pub fn new_partial(
         ParachainBackend,
         (),
         sc_consensus::DefaultImportQueue<Block>,
-        sc_transaction_pool::FullPool<Block, ParachainClient>,
+        sc_transaction_pool::TransactionPoolHandle<Block, ParachainClient>,
         (
             ParachainBlockImport,
             Option<Telemetry>,
@@ -177,17 +186,18 @@ pub fn new_partial(
         .transpose()?;
 
     let heap_pages = config
+        .executor
         .default_heap_pages
         .map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
             extra_pages: h as _,
         });
 
     let executor = WasmExecutor::builder()
-        .with_execution_method(config.wasm_method)
+        .with_execution_method(config.executor.wasm_method)
         .with_onchain_heap_alloc_strategy(heap_pages)
         .with_offchain_heap_alloc_strategy(heap_pages)
-        .with_max_runtime_instances(config.max_runtime_instances)
-        .with_runtime_cache_size(config.runtime_cache_size)
+        .with_max_runtime_instances(config.executor.max_runtime_instances)
+        .with_runtime_cache_size(config.executor.runtime_cache_size)
         .build();
 
     let (client, backend, keystore_container, task_manager) =
@@ -207,12 +217,15 @@ pub fn new_partial(
         telemetry
     });
 
-    let transaction_pool = sc_transaction_pool::BasicPool::new_full(
-        config.transaction_pool.clone(),
-        config.role.is_authority().into(),
-        config.prometheus_registry(),
-        task_manager.spawn_essential_handle(),
-        client.clone(),
+    let transaction_pool = Arc::new(
+        sc_transaction_pool::Builder::new(
+            task_manager.spawn_essential_handle(),
+            client.clone(),
+            config.role.is_authority().into(),
+        )
+        .with_options(config.transaction_pool.clone())
+        .with_prometheus(config.prometheus_registry())
+        .build(),
     );
 
     let overrides = Arc::new(StorageOverrideHandler::new(client.clone()));
@@ -283,6 +296,7 @@ pub fn new_partial(
 }
 
 /// Build the import queue for the parachain runtime.
+#[allow(clippy::result_large_err)]
 fn build_import_queue(
     client: Arc<ParachainClient>,
     block_import: ParachainBlockImport,
@@ -318,6 +332,7 @@ fn build_import_queue(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::result_large_err)]
 fn start_consensus(
     client: Arc<ParachainClient>,
     backend: Arc<ParachainBackend>,
@@ -326,8 +341,8 @@ fn start_consensus(
     telemetry: Option<TelemetryHandle>,
     task_manager: &TaskManager,
     relay_chain_interface: Arc<dyn RelayChainInterface>,
-    transaction_pool: Arc<sc_transaction_pool::FullPool<Block, ParachainClient>>,
-    sync_oracle: Arc<SyncingService<Block>>,
+    transaction_pool: Arc<sc_transaction_pool::TransactionPoolHandle<Block, ParachainClient>>,
+    _sync_service: Arc<SyncingService<Block>>,
     keystore: KeystorePtr,
     relay_chain_slot_duration: Duration,
     para_id: ParaId,
@@ -343,7 +358,7 @@ fn start_consensus(
     let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
         task_manager.spawn_handle(),
         client.clone(),
-        transaction_pool,
+        transaction_pool.clone(),
         prometheus_registry,
         telemetry.clone(),
     );
@@ -369,7 +384,6 @@ fn start_consensus(
                 .ok()
                 .map(|c| ValidationCode::from(c).hash())
         },
-        sync_oracle,
         keystore,
         collator_key,
         para_id,
@@ -381,10 +395,9 @@ fn start_consensus(
         reinitialize: false,
     };
 
-    let fut =
-        aura::run::<Block, sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _, _, _, _>(
-            params,
-        );
+    let fut = aura::run::<Block, sp_consensus_aura::sr25519::AuthorityPair, _, _, _, _, _, _, _, _>(
+        params,
+    );
     task_manager
         .spawn_essential_handle()
         .spawn("aura", None, fut);
@@ -436,10 +449,11 @@ async fn start_node_impl(
     let validator = parachain_config.role.is_authority();
     let prometheus_registry = parachain_config.prometheus_registry().cloned();
     let import_queue_service = import_queue.service();
-    let net_config =
-        sc_network::config::FullNetworkConfiguration::<_, _, sc_network::NetworkWorker<_, _>>::new(
-            &parachain_config.network,
-        );
+    let net_config = sc_network::config::FullNetworkConfiguration::<
+        _,
+        _,
+        sc_network::NetworkWorker<_, _>,
+    >::new(&parachain_config.network, prometheus_registry.clone());
 
     let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
         build_network(BuildNetworkParams {
@@ -470,7 +484,7 @@ async fn start_node_impl(
                 network_provider: Arc::new(network.clone()),
                 enable_http_requests: true,
                 custom_extensions: |_| vec![],
-            })
+            })?
             .run(client.clone(), task_manager.spawn_handle())
             .boxed(),
         );
@@ -487,18 +501,22 @@ async fn start_node_impl(
     let _target_gas_price = eth_config.target_gas_price;
 
     // for ethereum-compatibility rpc.
-    parachain_config.rpc_id_provider = Some(Box::new(fc_rpc::EthereumSubIdProvider));
+    // Note: rpc_id_provider is no longer available in newer substrate versions
 
-    #[cfg(feature = "niskala-native")]
-    let converter = niskala_runtime::TransactionConverter;
-
-    #[cfg(feature = "mandala-native")]
-    let converter = mandala_runtime::TransactionConverter;
+    let converter = {
+        #[cfg(feature = "niskala-native")]
+        {
+            niskala_runtime::TransactionConverter
+        }
+        #[cfg(all(feature = "mandala-native", not(feature = "niskala-native")))]
+        {
+            mandala_runtime::TransactionConverter
+        }
+    };
 
     let eth_rpc_params = crate::rpc::EthDeps {
         client: client.clone(),
         pool: transaction_pool.clone(),
-        graph: transaction_pool.pool().clone(),
         converter: Some(converter),
         is_authority: parachain_config.role.is_authority(),
         enable_dev_signer: eth_config.enable_dev_signer,
@@ -534,7 +552,8 @@ async fn start_node_impl(
         let transaction_pool = transaction_pool.clone();
         let pubsub_notification_sinks = pubsub_notification_sinks.clone();
 
-        Box::new(move |deny_unsafe, subscription_task_executor| {
+        Box::new(move |subscription_task_executor| {
+            let deny_unsafe = sc_rpc::DenyUnsafe::No;
             let deps = crate::rpc::FullDeps {
                 client: client.clone(),
                 pool: transaction_pool.clone(),
@@ -586,7 +605,7 @@ async fn start_node_impl(
         // in there and swapping out the requirements for your own are probably a good idea. The
         // requirements for a para-chain are dictated by its relay-chain.
         if SUBSTRATE_REFERENCE_HARDWARE
-            .check_hardware(&hwbench)
+            .check_hardware(&hwbench, validator)
             .is_err()
             && validator
         {
@@ -595,12 +614,11 @@ async fn start_node_impl(
             );
         }
 
-        if let Some(ref mut telemetry) = telemetry {
-            let telemetry_handle = telemetry.handle();
+        if let Some(ref telemetry) = telemetry {
             task_manager.spawn_handle().spawn(
                 "telemetry_hwbench",
                 None,
-                sc_sysinfo::initialize_hwbench_telemetry(telemetry_handle, hwbench),
+                sc_sysinfo::initialize_hwbench_telemetry(telemetry.handle(), hwbench),
             );
         }
     }
@@ -642,7 +660,7 @@ async fn start_node_impl(
             telemetry.as_ref().map(|t| t.handle()),
             &task_manager,
             relay_chain_interface.clone(),
-            transaction_pool,
+            transaction_pool.clone(),
             sync_service.clone(),
             keystore_container.keystore(),
             relay_chain_slot_duration,

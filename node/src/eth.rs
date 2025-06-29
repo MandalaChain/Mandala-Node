@@ -18,7 +18,7 @@ use fc_mapping_sync::{kv::MappingSyncWorker, SyncStrategy};
 use fc_rpc::{EthTask, StorageOverride};
 pub use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 // Local
-#[cfg(feature = "niskala-native")]
+#[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 use niskala_runtime::opaque::Block;
 
 #[cfg(feature = "mandala-native")]
@@ -100,6 +100,7 @@ pub struct FrontierPartialComponents {
     pub fee_history_cache_limit: FeeHistoryCacheLimit,
 }
 
+#[allow(clippy::result_large_err)]
 pub fn new_frontier_partial(
     config: &EthConfiguration,
 ) -> Result<FrontierPartialComponents, ServiceError> {

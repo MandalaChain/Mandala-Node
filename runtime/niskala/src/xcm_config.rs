@@ -23,7 +23,7 @@ use xcm_executor::XcmExecutor;
 
 parameter_types! {
     pub const RelayLocation: Location = Location::parent();
-    pub const RelayNetwork: NetworkId = NetworkId::Rococo;
+    pub const RelayNetwork: NetworkId = NetworkId::PolkadotBulletin;
     pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
     pub UniversalLocation: InteriorLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 }
@@ -154,6 +154,7 @@ impl xcm_executor::Config for XcmConfig {
     type SafeCallFilter = Everything;
     type Aliasers = Nothing;
     type TransactionalProcessor = FrameTransactionalProcessor;
+    type XcmRecorder = ();
 }
 
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.

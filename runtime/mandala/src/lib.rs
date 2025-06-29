@@ -24,7 +24,7 @@ use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
 use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H160, H256, U256};
 use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys,
+    generic, impl_opaque_keys,
     traits::{
         BlakeTwo256, Block as BlockT, DispatchInfoOf, Dispatchable, IdentifyAccount,
         IdentityLookup, PostDispatchInfoOf, UniqueSaturatedInto, Verify,
@@ -187,14 +187,14 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("mandala-parachain"),
-    impl_name: create_runtime_str!("mandala-parachain"),
+    spec_name: sp_runtime::Cow::Borrowed("mandala-parachain"),
+    impl_name: sp_runtime::Cow::Borrowed("mandala-parachain"),
     authoring_version: 1,
     spec_version: 2,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
-    state_version: 1,
+    system_version: 1,
 };
 
 /// This determines the average expected block time that we are targeting.
@@ -368,6 +368,7 @@ impl pallet_balances::Config for Runtime {
     type RuntimeFreezeReason = RuntimeFreezeReason;
     type FreezeIdentifier = ();
     type MaxFreezes = ConstU32<0>;
+    type DoneSlashHandler = ();
 }
 
 parameter_types! {
@@ -382,6 +383,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
     type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
     type OperationalFeeMultiplier = ConstU8<5>;
+    type WeightInfo = ();
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -408,6 +410,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
     type ReservedXcmpWeight = ReservedXcmpWeight;
     type CheckAssociatedRelayNumber = RelayNumberMonotonicallyIncreases;
     type ConsensusHook = ConsensusHook;
+    type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
 }
 
 type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
@@ -437,6 +440,8 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
     type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
     type WeightInfo = ();
     type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+    type MaxActiveOutboundChannels = ConstU32<128>;
+    type MaxPageSize = ConstU32<{ 100 * 1024 }>;
 }
 
 parameter_types! {
@@ -642,8 +647,8 @@ impl pallet_evm::Config for Runtime {
     type PrecompilesType = MandalaPrecompiles<Runtime>;
     type PrecompilesValue = PrecompilesValue;
     type RuntimeEvent = RuntimeEvent;
-    type SuicideQuickClearLimit = SuicideQuickClearLimit;
     type WeightPerGas = WeightPerGas;
+    type AccountProvider = pallet_evm::FrameSystemAccountProvider<Runtime>;
     fn config() -> &'static fp_evm::Config {
         &EVM_CONFIG
     }
@@ -654,7 +659,7 @@ pub struct TransactionConverter;
 
 impl fp_rpc::ConvertTransaction<UncheckedExtrinsic> for TransactionConverter {
     fn convert_transaction(&self, transaction: pallet_ethereum::Transaction) -> UncheckedExtrinsic {
-        UncheckedExtrinsic::new_unsigned(
+        UncheckedExtrinsic::new_bare(
             (pallet_ethereum::Call::<Runtime>::transact { transaction }).into(),
         )
     }
@@ -665,7 +670,7 @@ impl fp_rpc::ConvertTransaction<opaque::UncheckedExtrinsic> for TransactionConve
         &self,
         transaction: pallet_ethereum::Transaction,
     ) -> opaque::UncheckedExtrinsic {
-        let extrinsic = UncheckedExtrinsic::new_unsigned(
+        let extrinsic = UncheckedExtrinsic::new_bare(
             (pallet_ethereum::Call::<Runtime>::transact { transaction }).into(),
         );
         let encoded = extrinsic.encode();
@@ -743,7 +748,7 @@ impl pallet_ethereum::Config for Runtime {
     type ExtraDataLength = ConstU32<32>;
     type PostLogContent = PostBlockAndTxnHashes;
     type RuntimeEvent = RuntimeEvent;
-    type StateRoot = pallet_ethereum::IntermediateStateRoot<Runtime>;
+    type StateRoot = ();
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -1039,7 +1044,7 @@ impl_runtime_apis! {
 
         fn storage_at(address: H160, index: U256) -> H256 {
             let mut tmp = [0u8; 32];
-            index.to_big_endian(&mut tmp);
+            tmp.copy_from_slice(&index.to_big_endian()[..]);
             pallet_evm::AccountStorages::<Runtime>::get(address, H256::from_slice(&tmp[..]))
         }
 
@@ -1258,7 +1263,7 @@ impl_runtime_apis! {
 
     impl fp_rpc::ConvertTransactionRuntimeApi<Block> for Runtime {
         fn convert_transaction(transaction: EthereumTransaction) -> <Block as BlockT>::Extrinsic {
-            UncheckedExtrinsic::new_unsigned(
+            UncheckedExtrinsic::new_bare(
                 pallet_ethereum::Call::<Runtime>::transact { transaction }.into(),
             )
         }

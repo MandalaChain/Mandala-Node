@@ -1,5 +1,9 @@
 pub use super::*;
 
+/// Specialized `ChainSpec` for the niskala parachain runtime.
+#[allow(dead_code)]
+pub type ChainSpec = sc_service::GenericChainSpec<Extensions>;
+
 pub struct Dev;
 pub struct Live;
 pub struct NodeChainSpec<Env>(PhantomData<Env>);

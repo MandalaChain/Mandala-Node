@@ -114,7 +114,7 @@ impl RelayChainCli {
         relay_chain_args: impl Iterator<Item = &'a String>,
     ) -> Self {
         let extension = {
-            #[cfg(feature = "niskala-native")]
+            #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
             {
                 crate::chain_spec::niskala::Extensions::try_get(&*para_config.chain_spec)
             }

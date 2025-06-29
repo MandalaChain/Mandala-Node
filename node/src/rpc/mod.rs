@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 // FIXME : change to use the actual block type when configuring mandala
-#[cfg(feature = "niskala-native")]
+#[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 use niskala_runtime::{opaque::Block, AccountId, Balance, Nonce};
 
 #[cfg(feature = "mandala-native")]
@@ -20,7 +20,6 @@ use sc_client_api::{
     UsageProvider,
 };
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
-use sc_transaction_pool::ChainApi;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
@@ -35,15 +34,16 @@ pub use self::eth::{create_eth, EthDeps};
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
 
 /// Full client dependencies
-pub struct FullDeps<C, P, A: ChainApi, CT, CIDP> {
+pub struct FullDeps<C, P, CT, CIDP> {
     /// The client instance to use.
     pub client: Arc<C>,
     /// Transaction pool instance.
     pub pool: Arc<P>,
     /// Whether to deny unsafe calls
+    #[allow(dead_code)]
     pub deny_unsafe: DenyUnsafe,
     /// Ethereum-compatibility specific dependencies.
-    pub eth: EthDeps<C, P, A, CT, Block, CIDP>,
+    pub eth: EthDeps<C, P, CT, Block, CIDP>,
 }
 pub struct DefaultEthConfig<C, BE>(std::marker::PhantomData<(C, BE)>);
 
@@ -58,8 +58,8 @@ where
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, BE, A, CT, CIDP>(
-    deps: FullDeps<C, P, A, CT, CIDP>,
+pub fn create_full<C, P, BE, CT, CIDP>(
+    deps: FullDeps<C, P, CT, CIDP>,
     subscription_task_executor: SubscriptionTaskExecutor,
     pubsub_notification_sinks: Arc<
         fc_mapping_sync::EthereumBlockNotificationSinks<
@@ -85,8 +85,7 @@ where
     C::Api: fp_rpc::EthereumRuntimeRPCApi<Block>,
     C::Api: AuraApi<Block, AuraId>,
     BE: Backend<Block> + 'static,
-    P: TransactionPool<Block = Block> + 'static,
-    A: ChainApi<Block = Block> + 'static,
+    P: TransactionPool<Block = Block, Hash = sp_core::H256> + 'static,
     CIDP: sp_inherents::CreateInherentDataProviders<Block, ()> + Send + 'static,
     CT: fp_rpc::ConvertTransaction<<Block as BlockT>::Extrinsic> + Send + Sync + 'static,
 {
@@ -97,15 +96,15 @@ where
     let FullDeps {
         client,
         pool,
-        deny_unsafe,
+        deny_unsafe: _,
         eth,
     } = deps;
 
-    io.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+    io.merge(System::new(client.clone(), pool).into_rpc())?;
     io.merge(TransactionPayment::new(client).into_rpc())?;
 
     // Ethereum compatibility RPCs
-    let io = create_eth::<Block, C, P, CT, BE, A, CIDP, DefaultEthConfig<C, BE>>(
+    let io = create_eth::<Block, C, P, CT, BE, CIDP, DefaultEthConfig<C, BE>>(
         io,
         eth,
         subscription_task_executor,

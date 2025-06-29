@@ -1,18 +1,16 @@
-use std::net::SocketAddr;
-
 use codec::Encode;
 use cumulus_primitives_core::ParaId;
 use fc_db::kv::frontier_database_dir;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 #[cfg(feature = "mandala-native")]
 use mandala_runtime::Block;
-#[cfg(feature = "niskala-native")]
+#[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 use niskala_runtime::Block;
 
 use log::info;
 use sc_cli::{
     ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
-    NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+    NetworkParams, RuntimeVersion, SharedParams, SubstrateCli,
 };
 use sc_service::{
     config::{BasePath, PrometheusConfig},
@@ -23,15 +21,11 @@ use sp_runtime::{
     StateVersion,
 };
 
-#[cfg(feature = "mandala-native")]
-use crate::chain_spec::mandala::{Dev, NodeChainSpec};
-#[cfg(feature = "niskala-native")]
-use crate::chain_spec::niskala::{Dev, Live, NodeChainSpec};
 #[cfg(feature = "try-runtime")]
 use crate::service::ParachainNativeExecutor;
 
 use crate::{
-    chain_spec::{self},
+    chain_spec::{self, CustomChainSpecProperties},
     cli::{Cli, RelayChainCli, Subcommand},
     eth::db_config_dir,
     service::new_partial,
@@ -39,19 +33,15 @@ use crate::{
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
     Ok(match id {
+        #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
+        "dev" => Box::new(chain_spec::niskala::NodeChainSpec::<chain_spec::niskala::Dev>::build()),
         #[cfg(feature = "niskala-native")]
-        "dev" => Box::new(
-            <NodeChainSpec<Dev> as chain_spec::niskala::CustomChainSpecProperties>::build(),
-        ),
-        #[cfg(feature = "niskala-native")]
-        "paseo" => Box::new(
-            <NodeChainSpec<Live> as chain_spec::niskala::CustomChainSpecProperties>::build(),
-        ),
+        "paseo" => Box::new(chain_spec::niskala::NodeChainSpec::<
+            chain_spec::niskala::Live,
+        >::build()),
 
         #[cfg(feature = "mandala-native")]
-        "dev" => Box::new(
-            <NodeChainSpec<Dev> as chain_spec::mandala::CustomChainSpecProperties>::build(),
-        ),
+        "dev" => Box::new(chain_spec::mandala::NodeChainSpec::<chain_spec::mandala::Dev>::build()),
         path => {
             #[cfg(feature = "mandala-native")]
             {
@@ -60,7 +50,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
                 )?)
             }
 
-            #[cfg(feature = "niskala-native")]
+            #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
             {
                 Box::new(chain_spec::niskala::ChainSpec::from_json_file(
                     std::path::PathBuf::from(path),
@@ -72,13 +62,17 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        #[cfg(feature = "niskala-native")]
+        #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
         {
-            "Niskala Collator".into()
+            return "Niskala Collator".into();
         }
         #[cfg(feature = "mandala-native")]
         {
             "Mandala Collator".into()
+        }
+        #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
+        {
+            return "Unknown Collator".into();
         }
     }
 
@@ -115,14 +109,17 @@ impl SubstrateCli for Cli {
 
 impl SubstrateCli for RelayChainCli {
     fn impl_name() -> String {
-        #[cfg(feature = "niskala-native")]
+        #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
         {
-            "Niskala Collator".into()
+            return "Niskala Collator".into();
         }
-
         #[cfg(feature = "mandala-native")]
         {
             "Mandala Collator".into()
+        }
+        #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
+        {
+            return "Unknown Collator".into();
         }
     }
 
@@ -177,18 +174,25 @@ macro_rules! construct_async_run {
 }
 impl Cli {
     #[allow(dead_code)]
-    fn runtime_version(spec: &dyn sc_service::ChainSpec) -> &'static RuntimeVersion {
-        match spec {
-            #[cfg(feature = "niskala-native")]
-            _ => &niskala_runtime::VERSION,
-            #[cfg(feature = "mandala-native")]
-            _ => &mandala_runtime::VERSION,
+    fn runtime_version(_spec: &dyn sc_service::ChainSpec) -> &'static RuntimeVersion {
+        #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
+        {
+            return &niskala_runtime::VERSION;
+        }
+        #[cfg(feature = "mandala-native")]
+        {
+            &mandala_runtime::VERSION
+        }
+        #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
+        {
+            panic!("No runtime feature enabled");
         }
     }
 }
 
 /// Parse command line arguments into service configuration.
-pub fn run() -> Result<()> {
+#[allow(clippy::result_large_err)]
+pub fn run() -> sc_cli::Result<()> {
     let cli = Cli::from_args();
     let eth_cfg = cli.eth.clone();
 
@@ -198,6 +202,7 @@ pub fn run() -> Result<()> {
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
+                
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             construct_async_run!(|components, cli, cmd, config, eth_cfg| {
@@ -287,6 +292,7 @@ pub fn run() -> Result<()> {
 
                 cmd.run(config, polkadot_config)
             })
+                
         }
         Some(Subcommand::ExportGenesisHead(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -298,6 +304,7 @@ pub fn run() -> Result<()> {
 
                 Ok(())
             })
+                
         }
         Some(Subcommand::ExportGenesisWasm(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -305,6 +312,7 @@ pub fn run() -> Result<()> {
                 let spec = cli.load_spec(&cmd.shared_params.chain.clone().unwrap_or_default())?;
                 cmd.run(&*spec)
             })
+                
         }
         Some(Subcommand::Benchmark(cmd)) => {
             let runner = cli.create_runner(&**cmd)?;
@@ -316,16 +324,17 @@ pub fn run() -> Result<()> {
                             #[allow(deprecated)]
                             cmd.run::<HashingFor<Block>, crate::service::HostFunctions>(config)
                         })
+                            
                     } else {
-                        Err("Benchmarking wasn't enabled when building the node. \
-					You can enable it with `--features runtime-benchmarks`."
-                            .into())
+                        Err(sc_cli::Error::Input("Benchmarking wasn't enabled when building the node. \
+					You can enable it with `--features runtime-benchmarks`.".into()))
                     }
                 }
                 BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
                     let partials = new_partial(&mut config, &eth_cfg)?;
                     cmd.run(partials.client)
-                }),
+                })
+                    ,
                 #[cfg(not(feature = "runtime-benchmarks"))]
                 BenchmarkCmd::Storage(_) => Err(sc_cli::Error::Input(
                     "Compile with --features=runtime-benchmarks \
@@ -338,14 +347,16 @@ pub fn run() -> Result<()> {
                     let db = partials.backend.expose_db();
                     let storage = partials.backend.expose_storage();
                     cmd.run(config, partials.client.clone(), db, storage)
-                }),
+                })
+                    ,
                 BenchmarkCmd::Machine(cmd) => {
                     runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
+                    
                 }
                 // NOTE: this allows the Client to leniently implement
                 // new benchmark commands without requiring a companion MR.
                 #[allow(unreachable_patterns)]
-                _ => Err("Benchmarking sub-command unsupported".into()),
+                _ => Err(sc_cli::Error::Input("Benchmarking sub-command unsupported".into())),
             }
         }
         #[cfg(feature = "try-runtime")]
@@ -380,11 +391,11 @@ pub fn run() -> Result<()> {
                     task_manager,
                 ))
             })
+                
         }
         #[cfg(not(feature = "try-runtime"))]
-        Some(Subcommand::TryRuntime) => Err("Try-runtime was not enabled when building the node. \
-			You can enable it with `--features try-runtime`."
-            .into()),
+        Some(Subcommand::TryRuntime) => Err(sc_cli::Error::Input("Try-runtime was not enabled when building the node. \
+			You can enable it with `--features try-runtime`.".into())),
 
         None => {
             let runner = cli.create_runner(&cli.run.normalize())?;
@@ -394,30 +405,16 @@ pub fn run() -> Result<()> {
                 let hwbench = (!cli.no_hardware_benchmarks)
                     .then_some(config.database.path().map(|database_path| {
                         let _ = std::fs::create_dir_all(database_path);
-                        sc_sysinfo::gather_hwbench(Some(database_path))
+                        sc_sysinfo::gather_hwbench(
+                            Some(database_path),
+                            &SUBSTRATE_REFERENCE_HARDWARE,
+                        )
                     }))
                     .flatten();
 
-                let para_id = {
-                    #[cfg(feature = "niskala-native")]
-                    {
-                        chain_spec::niskala::Extensions::try_get(&*config.chain_spec)
-                            .map(|e| e.para_id)
-                            .ok_or("Could not find parachain ID in chain-spec.")?
-                    }
-
-                    #[cfg(feature = "mandala-native")]
-                    {
-                        chain_spec::mandala::Extensions::try_get(&*config.chain_spec)
-                            .map(|e| e.para_id)
-                            .ok_or("Could not find parachain ID in chain-spec.")?
-                    }
-
-                    #[cfg(not(any(feature = "niskala-native", feature = "mandala-native")))]
-                    {
-                        return Err("No runtime feature enabled".to_string());
-                    }
-                };
+                let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
+                    .map(|e| e.para_id)
+                    .ok_or("Could not find parachain ID in chain-spec.")?;
 
                 let polkadot_cli = RelayChainCli::new(
                     &config,
@@ -496,14 +493,14 @@ impl CliConfiguration<Self> for RelayChainCli {
         self.base.base.keystore_params()
     }
 
-    fn base_path(&self) -> Result<Option<BasePath>> {
+    fn base_path(&self) -> sc_cli::Result<Option<BasePath>> {
         Ok(self
             .shared_params()
             .base_path()?
             .or_else(|| self.base_path.clone().map(Into::into)))
     }
 
-    fn rpc_addr(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+    fn rpc_addr(&self, default_listen_port: u16) -> sc_cli::Result<Option<Vec<sc_cli::RpcEndpoint>>> {
         self.base.base.rpc_addr(default_listen_port)
     }
 
@@ -511,26 +508,20 @@ impl CliConfiguration<Self> for RelayChainCli {
         &self,
         default_listen_port: u16,
         chain_spec: &Box<dyn ChainSpec>,
-    ) -> Result<Option<PrometheusConfig>> {
+    ) -> sc_cli::Result<Option<PrometheusConfig>> {
         self.base
             .base
             .prometheus_config(default_listen_port, chain_spec)
     }
 
-    fn init<F>(
-        &self,
-        _support_url: &String,
-        _impl_version: &String,
-        _logger_hook: F,
-        _config: &sc_service::Configuration,
-    ) -> Result<()>
+    fn init<F>(&self, _support_url: &String, _impl_version: &String, _logger_hook: F) -> sc_cli::Result<()>
     where
-        F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
+        F: FnOnce(&mut sc_cli::LoggerBuilder),
     {
         unreachable!("PolkadotCli is never initialized; qed");
     }
 
-    fn chain_id(&self, is_dev: bool) -> Result<String> {
+    fn chain_id(&self, is_dev: bool) -> sc_cli::Result<String> {
         let chain_id = self.base.base.chain_id(is_dev)?;
 
         Ok(if chain_id.is_empty() {
@@ -540,58 +531,58 @@ impl CliConfiguration<Self> for RelayChainCli {
         })
     }
 
-    fn role(&self, is_dev: bool) -> Result<sc_service::Role> {
+    fn role(&self, is_dev: bool) -> sc_cli::Result<sc_service::Role> {
         self.base.base.role(is_dev)
     }
 
-    fn transaction_pool(&self, is_dev: bool) -> Result<sc_service::config::TransactionPoolOptions> {
+    fn transaction_pool(&self, is_dev: bool) -> sc_cli::Result<sc_service::config::TransactionPoolOptions> {
         self.base.base.transaction_pool(is_dev)
     }
 
-    fn trie_cache_maximum_size(&self) -> Result<Option<usize>> {
+    fn trie_cache_maximum_size(&self) -> sc_cli::Result<Option<usize>> {
         self.base.base.trie_cache_maximum_size()
     }
 
-    fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
+    fn rpc_methods(&self) -> sc_cli::Result<sc_service::config::RpcMethods> {
         self.base.base.rpc_methods()
     }
 
-    fn rpc_max_connections(&self) -> Result<u32> {
+    fn rpc_max_connections(&self) -> sc_cli::Result<u32> {
         self.base.base.rpc_max_connections()
     }
 
-    fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
+    fn rpc_cors(&self, is_dev: bool) -> sc_cli::Result<Option<Vec<String>>> {
         self.base.base.rpc_cors(is_dev)
     }
 
-    fn default_heap_pages(&self) -> Result<Option<u64>> {
+    fn default_heap_pages(&self) -> sc_cli::Result<Option<u64>> {
         self.base.base.default_heap_pages()
     }
 
-    fn force_authoring(&self) -> Result<bool> {
+    fn force_authoring(&self) -> sc_cli::Result<bool> {
         self.base.base.force_authoring()
     }
 
-    fn disable_grandpa(&self) -> Result<bool> {
+    fn disable_grandpa(&self) -> sc_cli::Result<bool> {
         self.base.base.disable_grandpa()
     }
 
-    fn max_runtime_instances(&self) -> Result<Option<usize>> {
+    fn max_runtime_instances(&self) -> sc_cli::Result<Option<usize>> {
         self.base.base.max_runtime_instances()
     }
 
-    fn announce_block(&self) -> Result<bool> {
+    fn announce_block(&self) -> sc_cli::Result<bool> {
         self.base.base.announce_block()
     }
 
     fn telemetry_endpoints(
         &self,
         chain_spec: &Box<dyn ChainSpec>,
-    ) -> Result<Option<sc_telemetry::TelemetryEndpoints>> {
+    ) -> sc_cli::Result<Option<sc_telemetry::TelemetryEndpoints>> {
         self.base.base.telemetry_endpoints(chain_spec)
     }
 
-    fn node_name(&self) -> Result<String> {
+    fn node_name(&self) -> sc_cli::Result<String> {
         self.base.base.node_name()
     }
 }

@@ -3,23 +3,21 @@ pub mod mandala;
 #[cfg(feature = "niskala-native")]
 pub mod niskala;
 
-#[cfg(feature = "niskala-native")]
+#[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 pub use niskala_runtime::{
     AccountId, AuraExtConfig, BalancesConfig, BaseFeeConfig, EVMChainIdConfig, EVMConfig,
-    RuntimeGenesisConfig, SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT,
-    UNIT, WASM_BINARY,
+    SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
 };
 
 #[cfg(feature = "mandala-native")]
 pub use mandala_runtime::{
     AccountId, AuraExtConfig, BalancesConfig, BaseFeeConfig, EVMChainIdConfig, EVMConfig,
-    RuntimeGenesisConfig, SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT,
-    UNIT, WASM_BINARY,
+    SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
 };
 
 pub use cumulus_primitives_core::ParaId;
 pub use fp_evm::GenesisAccount;
-pub use sc_chain_spec::{ChainSpecBuilder, ChainSpecExtension, ChainSpecGroup};
+pub use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 pub use sc_network::config::MultiaddrWithPeerId;
 pub use sc_service::{ChainType, Properties};
 pub use sc_telemetry::TelemetryEndpoints;
@@ -61,7 +59,7 @@ impl Extensions {
     }
 }
 
-#[cfg(feature = "niskala-native")]
+#[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 pub fn template_session_keys(keys: AuraId) -> niskala_runtime::SessionKeys {
     niskala_runtime::SessionKeys { aura: keys }
 }
@@ -194,6 +192,7 @@ pub trait CustomChainSpecProperties {
                         )
                     })
                     .collect(),
+                non_authority_keys: vec![],
             },
             "system": SystemConfig {
                 ..Default::default()
@@ -235,7 +234,7 @@ pub trait CustomChainSpecProperties {
     fn fork_id() -> &'static str;
 
     fn build() -> ChainSpec {
-        ChainSpecBuilder::new(Self::wasm_binary(), Self::extension())
+        ChainSpec::builder(Self::wasm_binary(), Self::extension())
             .with_name(Self::chain_name())
             .with_id(Self::chain_identifier())
             .with_chain_type(Self::chain_type())
@@ -270,7 +269,7 @@ pub trait CustomChainSpecProperties {
 }
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<RuntimeGenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 #[allow(dead_code)]
 pub type AccountPublic = <Signature as Verify>::Signer;
