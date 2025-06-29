@@ -20,12 +20,6 @@ chain = "{{CHAIN}}"
 cumulus_based = true
 force_decorator = "generic-evm"
 
-# First collator - mimics NISKALA_1 from production
-[[parachains.collators]]
+[parachains.collator]
 name = "niskala-collator-1"
-command = "mandala"
-
-# Second collator - mimics NISKALA_2 from production
-[[parachains.collators]]
-name = "niskala-collator-2"
 command = "mandala"
