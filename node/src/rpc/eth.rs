@@ -2,7 +2,6 @@ use fc_rpc::DebugApiServer;
 use std::{collections::BTreeMap, sync::Arc};
 // TODO : integrate tracing api
 use fc_rpc::{pending::AuraConsensusDataProvider, Debug};
-use fc_rpc_core::EthApiServer;
 use jsonrpsee::RpcModule;
 // Substrate
 use sc_client_api::{
@@ -23,7 +22,7 @@ use sp_runtime::traits::Block as BlockT;
 // Frontier
 pub use fc_rpc::{EthBlockDataCacheTask, EthConfig, StorageOverride};
 // #[cfg(feature = "txpool")]
-use fc_rpc::{TxPool, TxPoolApiServer};
+// use fc_rpc::{TxPool, TxPoolApiServer};
 pub use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_rpc::{ConvertTransaction, ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 
@@ -114,7 +113,7 @@ where
     C: HeaderBackend<B> + HeaderMetadata<B, Error = BlockChainError>,
     C: BlockchainEvents<B> + AuxStore + UsageProvider<B> + StorageProvider<B, BE> + 'static,
     BE: Backend<B> + 'static,
-    P: TransactionPool<Block = B, Hash = H256> + 'static,
+    P: TransactionPool<Block = B, Hash = H256> + sc_transaction_pool::ChainApi + 'static,
     CT: ConvertTransaction<<B as BlockT>::Extrinsic> + Send + Sync + 'static,
     CIDP: sp_inherents::CreateInherentDataProviders<B, ()> + Send + 'static,
 {
@@ -149,7 +148,7 @@ where
     }
 
     io.merge(
-        Eth::<B, C, P, CT, BE, CIDP, EC>::new(
+        Eth::<B, C, P, CT, BE, P, CIDP, EC>::new(
             client.clone(),
             pool.clone(),
             pool.clone(),
@@ -176,11 +175,9 @@ where
             EthFilter::new(
                 client.clone(),
                 frontier_backend.clone(),
-                pool.clone(),
                 filter_pool,
                 500_usize, // max stored filters
                 max_past_logs,
-                60_u32, // max_logs_per_response
                 block_data_cache.clone(),
             )
             .into_rpc(),
@@ -221,7 +218,9 @@ where
         .into_rpc(),
     )?;
 
-    io.merge(TxPool::new(client, pool).into_rpc())?;
+    // TODO: Enable when txpool feature is available
+    // #[cfg(feature = "txpool")]
+    // io.merge(TxPool::new(client, pool).into_rpc())?;
 
     Ok(io)
 }

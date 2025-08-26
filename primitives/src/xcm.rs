@@ -54,9 +54,11 @@ where
     R: pallet_balances::Config + pallet_authorship::Config,
 {
     // this seems to be called for substrate-based transactions
-    fn on_unbalanceds(
+    fn on_unbalanceds<B>(
         mut fees_then_tips: impl Iterator<Item = Credit<R::AccountId, pallet_balances::Pallet<R>>>,
-    ) {
+    ) where
+        Credit<R::AccountId, pallet_balances::Pallet<R>>: frame_support::traits::Imbalance<B>,
+    {
         let Some(author) = <pallet_authorship::Pallet<R>>::author() else {
             return;
         };

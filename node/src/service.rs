@@ -161,7 +161,7 @@ pub fn new_partial(
         ParachainBackend,
         (),
         sc_consensus::DefaultImportQueue<Block>,
-        sc_transaction_pool::TransactionPoolHandle<Block, ParachainClient>,
+        sc_transaction_pool::FullPool<Block, ParachainClient>,
         (
             ParachainBlockImport,
             Option<Telemetry>,
@@ -186,18 +186,17 @@ pub fn new_partial(
         .transpose()?;
 
     let heap_pages = config
-        .executor
         .default_heap_pages
         .map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
             extra_pages: h as _,
         });
 
     let executor = WasmExecutor::builder()
-        .with_execution_method(config.executor.wasm_method)
+        .with_execution_method(config.wasm_method)
         .with_onchain_heap_alloc_strategy(heap_pages)
         .with_offchain_heap_alloc_strategy(heap_pages)
-        .with_max_runtime_instances(config.executor.max_runtime_instances)
-        .with_runtime_cache_size(config.executor.runtime_cache_size)
+        .with_max_runtime_instances(config.max_runtime_instances)
+        .with_runtime_cache_size(config.runtime_cache_size)
         .build();
 
     let (client, backend, keystore_container, task_manager) =
@@ -217,15 +216,12 @@ pub fn new_partial(
         telemetry
     });
 
-    let transaction_pool = Arc::new(
-        sc_transaction_pool::Builder::new(
-            task_manager.spawn_essential_handle(),
-            client.clone(),
-            config.role.is_authority().into(),
-        )
-        .with_options(config.transaction_pool.clone())
-        .with_prometheus(config.prometheus_registry())
-        .build(),
+    let transaction_pool = sc_transaction_pool::BasicPool::new_full(
+        config.transaction_pool.clone(),
+        config.role.is_authority().into(),
+        config.prometheus_registry(),
+        task_manager.spawn_essential_handle(),
+        client.clone(),
     );
 
     let overrides = Arc::new(StorageOverrideHandler::new(client.clone()));
@@ -341,7 +337,7 @@ fn start_consensus(
     telemetry: Option<TelemetryHandle>,
     task_manager: &TaskManager,
     relay_chain_interface: Arc<dyn RelayChainInterface>,
-    transaction_pool: Arc<sc_transaction_pool::TransactionPoolHandle<Block, ParachainClient>>,
+    transaction_pool: Arc<sc_transaction_pool::FullPool<Block, ParachainClient>>,
     _sync_service: Arc<SyncingService<Block>>,
     keystore: KeystorePtr,
     relay_chain_slot_duration: Duration,
@@ -449,11 +445,7 @@ async fn start_node_impl(
     let validator = parachain_config.role.is_authority();
     let prometheus_registry = parachain_config.prometheus_registry().cloned();
     let import_queue_service = import_queue.service();
-    let net_config = sc_network::config::FullNetworkConfiguration::<
-        _,
-        _,
-        sc_network::NetworkWorker<_, _>,
-    >::new(&parachain_config.network, prometheus_registry.clone());
+    let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
 
     let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
         build_network(BuildNetworkParams {
@@ -484,7 +476,7 @@ async fn start_node_impl(
                 network_provider: Arc::new(network.clone()),
                 enable_http_requests: true,
                 custom_extensions: |_| vec![],
-            })?
+            })
             .run(client.clone(), task_manager.spawn_handle())
             .boxed(),
         );
@@ -552,8 +544,7 @@ async fn start_node_impl(
         let transaction_pool = transaction_pool.clone();
         let pubsub_notification_sinks = pubsub_notification_sinks.clone();
 
-        Box::new(move |subscription_task_executor| {
-            let deny_unsafe = sc_rpc::DenyUnsafe::No;
+        Box::new(move |deny_unsafe, subscription_task_executor| {
             let deps = crate::rpc::FullDeps {
                 client: client.clone(),
                 pool: transaction_pool.clone(),
@@ -604,10 +595,10 @@ async fn start_node_impl(
         // Here you can check whether the hardware meets your chains' requirements. Putting a link
         // in there and swapping out the requirements for your own are probably a good idea. The
         // requirements for a para-chain are dictated by its relay-chain.
-        if SUBSTRATE_REFERENCE_HARDWARE
-            .check_hardware(&hwbench, validator)
-            .is_err()
-            && validator
+        if validator
+            && SUBSTRATE_REFERENCE_HARDWARE
+                .check_hardware(&hwbench)
+                .is_err()
         {
             log::warn!(
                 "⚠️  The hardware does not meet the minimal requirements for role 'Authority'."

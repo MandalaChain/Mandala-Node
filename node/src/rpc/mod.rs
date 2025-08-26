@@ -40,7 +40,6 @@ pub struct FullDeps<C, P, CT, CIDP> {
     /// Transaction pool instance.
     pub pool: Arc<P>,
     /// Whether to deny unsafe calls
-    #[allow(dead_code)]
     pub deny_unsafe: DenyUnsafe,
     /// Ethereum-compatibility specific dependencies.
     pub eth: EthDeps<C, P, CT, Block, CIDP>,
@@ -85,7 +84,9 @@ where
     C::Api: fp_rpc::EthereumRuntimeRPCApi<Block>,
     C::Api: AuraApi<Block, AuraId>,
     BE: Backend<Block> + 'static,
-    P: TransactionPool<Block = Block, Hash = sp_core::H256> + 'static,
+    P: TransactionPool<Block = Block, Hash = sp_core::H256>
+        + sc_transaction_pool::ChainApi
+        + 'static,
     CIDP: sp_inherents::CreateInherentDataProviders<Block, ()> + Send + 'static,
     CT: fp_rpc::ConvertTransaction<<Block as BlockT>::Extrinsic> + Send + Sync + 'static,
 {
@@ -96,12 +97,12 @@ where
     let FullDeps {
         client,
         pool,
-        deny_unsafe: _,
+        deny_unsafe,
         eth,
     } = deps;
 
-    io.merge(System::new(client.clone(), pool).into_rpc())?;
-    io.merge(TransactionPayment::new(client).into_rpc())?;
+    io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
+    io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
     // Ethereum compatibility RPCs
     let io = create_eth::<Block, C, P, CT, BE, CIDP, DefaultEthConfig<C, BE>>(

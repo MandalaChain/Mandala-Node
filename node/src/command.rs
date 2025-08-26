@@ -404,10 +404,7 @@ pub fn run() -> sc_cli::Result<()> {
                 let hwbench = (!cli.no_hardware_benchmarks)
                     .then_some(config.database.path().map(|database_path| {
                         let _ = std::fs::create_dir_all(database_path);
-                        sc_sysinfo::gather_hwbench(
-                            Some(database_path),
-                            &SUBSTRATE_REFERENCE_HARDWARE,
-                        )
+                        sc_sysinfo::gather_hwbench(Some(database_path))
                     }))
                     .flatten();
 
@@ -499,10 +496,7 @@ impl CliConfiguration<Self> for RelayChainCli {
             .or_else(|| self.base_path.clone().map(Into::into)))
     }
 
-    fn rpc_addr(
-        &self,
-        default_listen_port: u16,
-    ) -> sc_cli::Result<Option<Vec<sc_cli::RpcEndpoint>>> {
+    fn rpc_addr(&self, default_listen_port: u16) -> sc_cli::Result<Option<std::net::SocketAddr>> {
         self.base.base.rpc_addr(default_listen_port)
     }
 
@@ -521,9 +515,10 @@ impl CliConfiguration<Self> for RelayChainCli {
         _support_url: &String,
         _impl_version: &String,
         _logger_hook: F,
+        _config: &sc_service::Configuration,
     ) -> sc_cli::Result<()>
     where
-        F: FnOnce(&mut sc_cli::LoggerBuilder),
+        F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
     {
         unreachable!("PolkadotCli is never initialized; qed");
     }
