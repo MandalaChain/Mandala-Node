@@ -91,6 +91,7 @@ pallet-ethereum = { workspace = true, features = [
 pallet-transaction-payment-rpc-runtime-api = { workspace = true, features = [
 	"std",
 ] }
+fp-dynamic-fee = { workspace = true, features = [ "std" ] }
 fp-evm = { workspace = true, features = ["std"] }
 
 

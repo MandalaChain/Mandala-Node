@@ -182,3 +182,4 @@ fc-rpc = { git = "https://github.com/moonbeam-foundation/frontier", branch = "mo
 fc-rpc-core = { git = "https://github.com/moonbeam-foundation/frontier", branch = "moonbeam-polkadot-stable2407", default-features = false }
 fp-consensus = { git = "https://github.com/moonbeam-foundation/frontier", branch = "moonbeam-polkadot-stable2407", default-features = false }
 fp-storage = { git = "https://github.com/moonbeam-foundation/frontier", branch = "moonbeam-polkadot-stable2407", default-features = false }
+fp-dynamic-fee = { git = "https://github.com/moonbeam-foundation/frontier", branch = "moonbeam-polkadot-stable2407", default-features = false }

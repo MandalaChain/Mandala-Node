@@ -20,10 +20,10 @@ use sc_client_api::{
     UsageProvider,
 };
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
-use sc_transaction_pool_api::TransactionPool;
+use sc_transaction_pool::ChainApi;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_consensus_aura::{sr25519::AuthorityId as AuraId, AuraApi};
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_runtime::traits::Block as BlockT;
 use substrate_frame_rpc_system::SystemApiServer;
 
@@ -34,7 +34,8 @@ pub use self::eth::{create_eth, EthDeps};
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
 
 /// Full client dependencies
-pub struct FullDeps<C, P, CT, CIDP> {
+/// Full client dependencies
+pub struct FullDeps<C, P, A: ChainApi, CT, CIDP> {
     /// The client instance to use.
     pub client: Arc<C>,
     /// Transaction pool instance.
@@ -42,7 +43,7 @@ pub struct FullDeps<C, P, CT, CIDP> {
     /// Whether to deny unsafe calls
     pub deny_unsafe: DenyUnsafe,
     /// Ethereum-compatibility specific dependencies.
-    pub eth: EthDeps<C, P, CT, Block, CIDP>,
+    pub eth: EthDeps<Block, C, P, A, CT, CIDP>,
 }
 pub struct DefaultEthConfig<C, BE>(std::marker::PhantomData<(C, BE)>);
 
@@ -57,8 +58,8 @@ where
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, BE, CT, CIDP>(
-    deps: FullDeps<C, P, CT, CIDP>,
+pub fn create_full<C, P, A: ChainApi, BE, CT, CIDP>(
+    deps: FullDeps<C, P, A, CT, CIDP>,
     subscription_task_executor: SubscriptionTaskExecutor,
     pubsub_notification_sinks: Arc<
         fc_mapping_sync::EthereumBlockNotificationSinks<
@@ -68,27 +69,27 @@ pub fn create_full<C, P, BE, CT, CIDP>(
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>
-        + CallApiAt<Block>
-        + StorageProvider<Block, BE>
-        + BlockchainEvents<Block>
         + HeaderBackend<Block>
         + AuxStore
-        + UsageProvider<Block>
         + HeaderMetadata<Block, Error = BlockChainError>
+        + Send
+        + Sync
+        + CallApiAt<Block>
+        + UsageProvider<Block>
+        + StorageProvider<Block, BE>
+        + BlockchainEvents<Block>
         + 'static,
-    C: CallApiAt<Block>,
-    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>,
+    C::Api: sp_consensus_aura::AuraApi<Block, AuraId>,
     C::Api: sp_block_builder::BlockBuilder<Block>,
     C::Api: fp_rpc::ConvertTransactionRuntimeApi<Block>,
     C::Api: fp_rpc::EthereumRuntimeRPCApi<Block>,
-    C::Api: AuraApi<Block, AuraId>,
-    BE: Backend<Block> + 'static,
-    P: TransactionPool<Block = Block, Hash = sp_core::H256>
-        + sc_transaction_pool::ChainApi
-        + 'static,
+    P: sc_transaction_pool_api::TransactionPool<Block = Block> + Sync + Send + 'static,
+    A: ChainApi<Block = Block> + 'static,
     CIDP: sp_inherents::CreateInherentDataProviders<Block, ()> + Send + 'static,
     CT: fp_rpc::ConvertTransaction<<Block as BlockT>::Extrinsic> + Send + Sync + 'static,
+    BE: Backend<Block> + 'static,
 {
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
     use substrate_frame_rpc_system::System;
@@ -105,7 +106,7 @@ where
     io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
     // Ethereum compatibility RPCs
-    let io = create_eth::<Block, C, P, CT, BE, CIDP, DefaultEthConfig<C, BE>>(
+    let io = create_eth::<Block, C, BE, P, A, CT, CIDP, DefaultEthConfig<C, BE>>(
         io,
         eth,
         subscription_task_executor,
