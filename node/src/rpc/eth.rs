@@ -185,6 +185,7 @@ where
                 filter_pool,
                 500_usize, // max stored filters
                 max_past_logs,
+                600u32, // max filter timeout in blocks
                 block_data_cache.clone(),
             )
             .into_rpc(),
@@ -226,7 +227,7 @@ where
     )?;
 
     #[cfg(feature = "txpool")]
-    io.merge(TxPool::new(client, pool).into_rpc())?;
+    io.merge(TxPool::new(client, graph).into_rpc())?;
 
     Ok(io)
 }

@@ -645,6 +645,7 @@ impl pallet_evm::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type WeightPerGas = WeightPerGas;
     type SuicideQuickClearLimit = SuicideQuickClearLimit;
+    type AccountProvider = pallet_evm::FrameSystemAccountProvider<Self>;
     fn config() -> &'static fp_evm::Config {
         &EVM_CONFIG
     }

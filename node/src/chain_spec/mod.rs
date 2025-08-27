@@ -194,6 +194,7 @@ pub trait CustomChainSpecProperties {
                         )
                     })
                     .collect(),
+                non_authority_keys: vec![],
             },
             "system": SystemConfig {
                 ..Default::default()

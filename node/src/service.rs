@@ -41,6 +41,7 @@ use sc_consensus::ImportQueue;
 use sc_executor::{HeapAllocStrategy, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY};
 use sc_network::{config::FullNetworkConfiguration, NetworkBlock};
 use sc_network_sync::SyncingService;
+use sc_rpc::DenyUnsafe;
 use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
@@ -186,17 +187,18 @@ pub fn new_partial(
         .transpose()?;
 
     let heap_pages = config
+        .executor
         .default_heap_pages
         .map_or(DEFAULT_HEAP_ALLOC_STRATEGY, |h| HeapAllocStrategy::Static {
             extra_pages: h as _,
         });
 
     let executor = WasmExecutor::builder()
-        .with_execution_method(config.wasm_method)
+        .with_execution_method(config.executor.wasm_method)
         .with_onchain_heap_alloc_strategy(heap_pages)
         .with_offchain_heap_alloc_strategy(heap_pages)
-        .with_max_runtime_instances(config.max_runtime_instances)
-        .with_runtime_cache_size(config.runtime_cache_size)
+        .with_max_runtime_instances(config.executor.max_runtime_instances)
+        .with_runtime_cache_size(config.executor.runtime_cache_size)
         .build();
 
     let (client, backend, keystore_container, task_manager) =
@@ -449,7 +451,10 @@ async fn start_node_impl(
         Block,
         sp_core::H256,
         sc_network::NetworkWorker<_, _>,
-    > = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+    > = sc_network::config::FullNetworkConfiguration::new(
+        &parachain_config.network,
+        prometheus_registry.clone(),
+    );
 
     let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
         build_network(BuildNetworkParams {
@@ -527,7 +532,8 @@ async fn start_node_impl(
         let prometheus_registry = prometheus_registry.clone();
         let task_manager_spawn_handle = task_manager.spawn_handle();
 
-        Box::new(move |deny_unsafe, subscription_task_executor| {
+        Box::new(move |subscription_task_executor| {
+            let deny_unsafe = DenyUnsafe::No;
             let eth_rpc_params = crate::rpc::EthDeps {
                 client: client.clone(),
                 pool: transaction_pool.clone(),
@@ -613,7 +619,7 @@ async fn start_node_impl(
         // requirements for a para-chain are dictated by its relay-chain.
         if validator
             && SUBSTRATE_REFERENCE_HARDWARE
-                .check_hardware(&hwbench)
+                .check_hardware(&hwbench, true)
                 .is_err()
         {
             log::warn!(
