@@ -1,8 +1,8 @@
 [toolchain]
 # Stable
-# channel = "1.81.0" # rustc 1.81.0
-# Nightly
-channel = "nightly-2024-07-19"
+channel = "1.87.0" # rustc 1.87.0 (17067e9ac 2025-05-09)
+# Nightly (uncomment to use)
+# channel = "nightly-2025-04-03"
 components = ["cargo", "clippy", "rustc", "rustfmt", "rust-src", "rust-docs"]
 profile = "minimal"
 targets = ["wasm32-unknown-unknown"]

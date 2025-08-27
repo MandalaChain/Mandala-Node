@@ -5,14 +5,14 @@ pub mod niskala;
 
 #[cfg(all(feature = "niskala-native", not(feature = "mandala-native")))]
 pub use niskala_runtime::{
-    AccountId, AuraExtConfig, BalancesConfig, EVMChainIdConfig, EVMConfig, SessionConfig,
-    Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
+    AccountId, AuraExtConfig, BalancesConfig, BaseFeeConfig, EVMChainIdConfig, EVMConfig,
+    SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
 };
 
 #[cfg(feature = "mandala-native")]
 pub use mandala_runtime::{
-    AccountId, AuraExtConfig, BalancesConfig, EVMChainIdConfig, EVMConfig, SessionConfig,
-    Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
+    AccountId, AuraExtConfig, BalancesConfig, BaseFeeConfig, EVMChainIdConfig, EVMConfig,
+    SessionConfig, Signature, SudoConfig, SystemConfig, EXISTENTIAL_DEPOSIT, UNIT, WASM_BINARY,
 };
 
 pub use cumulus_primitives_core::ParaId;
@@ -40,9 +40,7 @@ pub use crate::account_id;
 // The URL for the telemetry server.
 pub const DEFAULT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
-// The XCM version to use for safe XCM operations
-// Using XCM v4 as indicated in CLAUDE.md for most chains
-pub const SAFE_XCM_VERSION: u32 = 4;
+pub const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 /// The extensions for the [`ChainSpec`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
@@ -212,6 +210,9 @@ pub trait CustomChainSpecProperties {
             },
             "evm": EVMConfig {
                 accounts: Self::get_evm_accounts(),
+                ..Default::default()
+            },
+            "baseFee": BaseFeeConfig{
                 ..Default::default()
             },
             "evmChainId": EVMChainIdConfig {

@@ -2,6 +2,7 @@ use fc_rpc::DebugApiServer;
 use std::{collections::BTreeMap, sync::Arc};
 // TODO : integrate tracing api
 use fc_rpc::{pending::AuraConsensusDataProvider, Debug};
+use fc_rpc_core::EthApiServer;
 use jsonrpsee::RpcModule;
 // Substrate
 use sc_client_api::{
@@ -12,7 +13,7 @@ use sc_client_api::{
 use sc_network::service::traits::NetworkService;
 use sc_network_sync::SyncingService;
 use sc_rpc::SubscriptionTaskExecutor;
-use sc_transaction_pool::{ChainApi, Pool};
+use sc_transaction_pool_api::TransactionPool;
 use sp_api::{CallApiAt, ProvideRuntimeApi};
 use sp_block_builder::BlockBuilder as BlockBuilderApi;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
@@ -21,20 +22,17 @@ use sp_core::H256;
 use sp_runtime::traits::Block as BlockT;
 // Frontier
 pub use fc_rpc::{EthBlockDataCacheTask, EthConfig, StorageOverride};
+// #[cfg(feature = "txpool")]
+use fc_rpc::{TxPool, TxPoolApiServer};
 pub use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use fp_rpc::{ConvertTransaction, ConvertTransactionRuntimeApi, EthereumRuntimeRPCApi};
 
-#[cfg(feature = "txpool")]
-use fc_rpc::{TxPool, TxPoolApiServer};
-
 /// Extra dependencies for Ethereum compatibility.
-pub struct EthDeps<B: BlockT, C, P, A: ChainApi, CT, CIDP> {
+pub struct EthDeps<C, P, CT, B: BlockT, CIDP> {
     /// The client instance to use.
     pub client: Arc<C>,
     /// Transaction pool instance.
     pub pool: Arc<P>,
-    /// Graph pool instance.
-    pub graph: Arc<Pool<A>>,
     /// Ethereum transaction converter.
     pub converter: Option<CT>,
     /// The Node authority flag
@@ -68,12 +66,11 @@ pub struct EthDeps<B: BlockT, C, P, A: ChainApi, CT, CIDP> {
     pub pending_create_inherent_data_providers: CIDP,
 }
 
-impl<B: BlockT, C, P, A: ChainApi, CT: Clone, CIDP: Clone> Clone for EthDeps<B, C, P, A, CT, CIDP> {
+impl<C, P, CT: Clone, B: BlockT, CIDP: Clone> Clone for EthDeps<C, P, CT, B, CIDP> {
     fn clone(&self) -> Self {
         Self {
             client: self.client.clone(),
             pool: self.pool.clone(),
-            graph: self.graph.clone(),
             converter: self.converter.clone(),
             is_authority: self.is_authority,
             enable_dev_signer: self.enable_dev_signer,
@@ -96,9 +93,9 @@ impl<B: BlockT, C, P, A: ChainApi, CT: Clone, CIDP: Clone> Clone for EthDeps<B, 
 }
 
 /// Instantiate Ethereum-compatible RPC extensions.
-pub fn create_eth<B, C, BE, P, A, CT, CIDP, EC>(
+pub fn create_eth<B, C, P, CT, BE, CIDP, EC: EthConfig<B, C>>(
     mut io: RpcModule<()>,
-    deps: EthDeps<B, C, P, A, CT, CIDP>,
+    deps: EthDeps<C, P, CT, B, CIDP>,
     subscription_task_executor: SubscriptionTaskExecutor,
     pubsub_notification_sinks: Arc<
         fc_mapping_sync::EthereumBlockNotificationSinks<
@@ -107,30 +104,28 @@ pub fn create_eth<B, C, BE, P, A, CT, CIDP, EC>(
     >,
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
-    B: BlockT<Hash = H256>,
+    B: BlockT<Hash = sp_core::H256>,
     C: CallApiAt<B> + ProvideRuntimeApi<B>,
-    C::Api: AuraApi<B, AuraId>
-        + BlockBuilderApi<B>
+    C: AuxStore + UsageProvider<B>,
+    C::Api: BlockBuilderApi<B>
+        + EthereumRuntimeRPCApi<B>
         + ConvertTransactionRuntimeApi<B>
-        + EthereumRuntimeRPCApi<B>,
+        + AuraApi<B, AuraId>,
     C: HeaderBackend<B> + HeaderMetadata<B, Error = BlockChainError>,
     C: BlockchainEvents<B> + AuxStore + UsageProvider<B> + StorageProvider<B, BE> + 'static,
     BE: Backend<B> + 'static,
-    P: sc_transaction_pool_api::TransactionPool<Block = B> + 'static,
-    A: ChainApi<Block = B> + 'static,
+    P: TransactionPool<Block = B, Hash = H256> + 'static,
     CT: ConvertTransaction<<B as BlockT>::Extrinsic> + Send + Sync + 'static,
     CIDP: sp_inherents::CreateInherentDataProviders<B, ()> + Send + 'static,
-    EC: EthConfig<B, C>,
 {
     use fc_rpc::{
-        Eth, EthApiServer, EthDevSigner, EthFilter, EthFilterApiServer, EthPubSub,
-        EthPubSubApiServer, EthSigner, Net, NetApiServer, Web3, Web3ApiServer,
+        Eth, EthDevSigner, EthFilter, EthFilterApiServer, EthPubSub, EthPubSubApiServer, EthSigner,
+        Net, NetApiServer, Web3, Web3ApiServer,
     };
 
     let EthDeps {
         client,
         pool,
-        graph,
         converter,
         is_authority,
         enable_dev_signer,
@@ -154,10 +149,10 @@ where
     }
 
     io.merge(
-        Eth::<B, C, P, CT, BE, A, CIDP, EC>::new(
+        Eth::<B, C, P, CT, BE, CIDP, EC>::new(
             client.clone(),
             pool.clone(),
-            graph.clone(),
+            pool.clone(),
             converter,
             sync.clone(),
             signers,
@@ -181,7 +176,7 @@ where
             EthFilter::new(
                 client.clone(),
                 frontier_backend.clone(),
-                graph.clone(),
+                pool.clone(),
                 filter_pool,
                 500_usize, // max stored filters
                 max_past_logs,
@@ -226,8 +221,7 @@ where
         .into_rpc(),
     )?;
 
-    #[cfg(feature = "txpool")]
-    io.merge(TxPool::new(client, graph).into_rpc())?;
+    io.merge(TxPool::new(client, pool).into_rpc())?;
 
     Ok(io)
 }

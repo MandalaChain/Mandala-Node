@@ -162,7 +162,7 @@ pub fn new_partial(
         ParachainBackend,
         (),
         sc_consensus::DefaultImportQueue<Block>,
-        sc_transaction_pool::FullPool<Block, ParachainClient>,
+        sc_transaction_pool::TransactionPoolHandle<Block, ParachainClient>,
         (
             ParachainBlockImport,
             Option<Telemetry>,
@@ -218,12 +218,15 @@ pub fn new_partial(
         telemetry
     });
 
-    let transaction_pool = sc_transaction_pool::BasicPool::new_full(
-        config.transaction_pool.clone(),
-        config.role.is_authority().into(),
-        config.prometheus_registry(),
-        task_manager.spawn_essential_handle(),
-        client.clone(),
+    let transaction_pool = Arc::new(
+        sc_transaction_pool::Builder::new(
+            task_manager.spawn_essential_handle(),
+            client.clone(),
+            config.role.is_authority().into(),
+        )
+        .with_options(config.transaction_pool.clone())
+        .with_prometheus(config.prometheus_registry())
+        .build(),
     );
 
     let overrides = Arc::new(StorageOverrideHandler::new(client.clone()));
@@ -339,7 +342,7 @@ fn start_consensus(
     telemetry: Option<TelemetryHandle>,
     task_manager: &TaskManager,
     relay_chain_interface: Arc<dyn RelayChainInterface>,
-    transaction_pool: Arc<sc_transaction_pool::FullPool<Block, ParachainClient>>,
+    transaction_pool: Arc<sc_transaction_pool::TransactionPoolHandle<Block, ParachainClient>>,
     _sync_service: Arc<SyncingService<Block>>,
     keystore: KeystorePtr,
     relay_chain_slot_duration: Duration,
@@ -485,7 +488,7 @@ async fn start_node_impl(
                 network_provider: Arc::new(network.clone()),
                 enable_http_requests: true,
                 custom_extensions: |_| vec![],
-            })
+            })?
             .run(client.clone(), task_manager.spawn_handle())
             .boxed(),
         );
@@ -537,7 +540,6 @@ async fn start_node_impl(
             let eth_rpc_params = crate::rpc::EthDeps {
                 client: client.clone(),
                 pool: transaction_pool.clone(),
-                graph: transaction_pool.pool().clone(),
                 #[cfg(feature = "niskala-native")]
                 converter: Some(niskala_runtime::TransactionConverter),
                 #[cfg(all(feature = "mandala-native", not(feature = "niskala-native")))]
